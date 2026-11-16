@@ -1,59 +1,98 @@
-# 8号 h22 最终 · 离线库月度更新（只在 GitHub 机器上做，绝不发生在 CF 部署路径上）
-# 库已随包带齐、push 一次立即生效；本 workflow 只负责「每月保鲜」与手动当场验证。
-# 不在 push 上触发：避免 h20 那次 commit 挂红叉，也避免重复重建覆盖随包库。
-# 不需要 CF API Token / Secret / 绑卡 / KV 写权限；用仓库自带 GITHUB_TOKEN。
-# 成功自动 commit（不带 skip ci，确保 Workers Builds 收到 push 并部署新库）。
-# 失败：还原上一版库、日志明确打印 FAILED、check 保持绿，/api/lib 的 fetchedAt 不变。
+# 8号 v51 · 离线 IP 库月度自动更新（DB-IP Lite / CC BY 4.0）
+# 上游：sapics/ip-location-db 的 rolling "latest" release，DB-IP Lite 按月刷新。
+# 链路：Actions 重建 → 用站点真实 geodb.js 端到端查询校验 → commit/push → Workers Builds 部署。
+# v50 的病根：workflow 引用的 tools/build-lib.mjs 没随包交付；且脚本失败也 exit 0、
+#   失败分支静默 exit 0 → 「绿叉但库永远没更新」。v51 补齐脚本、严格模式、抬高门槛、失败红叉。
 name: monthly IP library rebuild
+
 on:
   schedule:
-    - cron: '7 6 1 * *'
-  workflow_dispatch:
+    - cron: '7 6 1 * *'          # 每月 1 号 UTC 06:07（北京 14:07）
+  workflow_dispatch:             # 随时手动跑一次，当场验收，不必等下个月
+    inputs:
+      dry_run:
+        description: '只重建与校验，不提交、不部署'
+        type: boolean
+        default: false
+
 permissions:
   contents: write
+
+concurrency:
+  group: ipckit-ip-library
+  cancel-in-progress: false
+
 jobs:
   rebuild:
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+
+      - name: preflight (v50 就是栽在这一步)
+        run: |
+          test -f tools/build-lib.mjs || { echo "::error::缺少 tools/build-lib.mjs，自动更新不可用"; exit 1; }
+          test -f tools/verify-lib.mjs || { echo "::error::缺少 tools/verify-lib.mjs"; exit 1; }
+          test -f assets/geo/meta.json || { echo "::error::仓库里没有基线库，无法回滚"; exit 1; }
+          test -f src/core/geodb.js || { echo "::error::缺少 src/core/geodb.js"; exit 1; }
+          node --version
+
       - name: backup previous library
         run: |
           rm -rf /tmp/geo-backup
-          cp -a assets/geo /tmp/geo-backup 2>/dev/null || true
-      - name: build and verify library
+          cp -a assets/geo /tmp/geo-backup
+
+      - name: rebuild + end-to-end verify (strict)
         env:
           NODE_OPTIONS: --max-old-space-size=4096
         run: |
-          set +e
           rm -rf assets/geo
-          node tools/build-lib.mjs
+          node tools/build-lib.mjs --strict
+          node tools/verify-lib.mjs assets/geo src/core/geodb.js
           node -e "
             const fs=require('fs');
             const m=JSON.parse(fs.readFileSync('assets/geo/meta.json','utf8'));
-            if(m.status!=='ready'||m.mode!=='shard6'||m.rowCount<100000||!m.encoded) throw new Error('meta invalid');
-            const dict=JSON.parse(fs.readFileSync('assets/geo/dict.json','utf8'));
-            const d=JSON.parse(fs.readFileSync('assets/geo/idx/001.json','utf8'));
-            const n=d.filter(r=>r.length===6 && Number.isInteger(r[3]) && dict.regions[r[3]]).length;
-            if(!n) throw new Error('no region values');
-            console.log('library rows',m.rowCount,'mode',m.mode,'version',m.version,'regions',dict.regions.length,'region in idx/001',n,'/',d.length);
+            const d=JSON.parse(fs.readFileSync('assets/geo/dict.json','utf8'));
+            if(m.status!=='ready') throw new Error('meta status');
+            if(m.mode!=='shard6'||m.encoded!==true) throw new Error('mode/encoded');
+            if(m.rowCount<4000000) throw new Error('rowCount too low: '+m.rowCount);
+            if(m.shardCount<250) throw new Error('shardCount too low: '+m.shardCount);
+            if(m.ipv6!==true) throw new Error('ipv6 missing');
+            if(!Array.isArray(d.regions)||d.regions.length<500) throw new Error('regions missing');
+            if(!Array.isArray(d.asns)||d.asns.length<10000) throw new Error('asns missing');
+            console.log('LIB OK',m.version,m.fetchedAt,'rows',m.rowCount,'shards',m.shardCount,'regions',d.regions.length,'asns',d.asns.length);
           "
-          RC=$?
-          set -e
-          if [ $RC -ne 0 ]; then
-            echo "LIB REBUILD FAILED - previous library kept; /api/lib fetchedAt unchanged"
-            rm -rf assets/geo
-            cp -a /tmp/geo-backup assets/geo 2>/dev/null || true
-            exit 0
-          fi
+
+      - name: restore previous library on failure
+        if: failure()
+        run: |
+          echo "::error::IP 库重建失败：已还原上一版，线上库与 /api/health 的 lib.fetchedAt 不变"
+          rm -rf assets/geo
+          cp -a /tmp/geo-backup assets/geo
+          exit 1
+
       - name: commit if changed
+        if: ${{ success() && !inputs.dry_run }}
         run: |
           git config user.name "ipckit-bot"
           git config user.email "ipckit-bot@users.noreply.github.com"
           git add assets/geo
-          if git diff --cached --quiet; then echo "no library change, no deploy triggered"; exit 0; fi
+          if git diff --cached --quiet; then
+            echo "::warning::库无变化，未提交、未触发部署"
+            exit 0
+          fi
+          date -u +%Y-%m-%dT%H:%M:%SZ > .ip-lib-last-run
+          git add .ip-lib-last-run
+          node -e "const m=require('./assets/geo/meta.json');console.log('committing',m.version,m.fetchedAt,'rows',m.rowCount,'checksum',m.checksum)"
           git commit -m "chore: monthly DB-IP Lite library $(date -u +%Y-%m)"
           git push
-          echo "published library at $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          echo "::notice::已 push；Workers Builds 部署后用 /api/health 核对 lib.fetchedAt / lib.version"
+
+      - name: deployment hint
+        if: ${{ success() && !inputs.dry_run }}
+        run: |
+          echo "本仓库已验证 push→部署链路（线上 v50 即由 git push 部署），正常无需额外操作。"
+          echo "若仓库未接 Cloudflare Workers Builds，push 只更新 GitHub，线上库不会变。"
