@@ -1,4 +1,4 @@
-# 8号 IP 自查站 · ipckit · v38（规范主机 ipck.piccalc.com）
+# 8号 IP 自查站 · ipckit · v39（规范主机 ipck.piccalc.com）
 # 历史沿革注释保留，仅供查阅。
 # h22：修好建库脚本的真断点（临时 ndjson 单文件无限 append → EFBIG）。
 #   库改为 8 列含地区，push 即由 workflow 自动重建并 commit，部署路径仍是纯上传。
@@ -32,7 +32,7 @@ crons = ["7 6 1,2,3 * *"]
 [vars]
 SITE_NAME = "ipckit"
 DEFAULT_LANG = "en"
-APP_VERSION = "v38"
+APP_VERSION = "v39"
 # 对外收录态：取消 noindex / robots 全禁；sitemap.xml、robots.txt、ads.txt 由 Worker 直出。
 # 规范主机常量写死在 src/index.js 的 CANON_HOST，面板只需把 ipck.piccalc.com 绑到本 Worker。
 # 若 GSC 选「HTML 标记」验证，可加 GSC_VERIFY_META = "给你的content值"（留空即不输出该 meta）。

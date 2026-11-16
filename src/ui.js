@@ -32,6 +32,11 @@ const BROWSER_SHIM = [
   "var __spreadArray = function (a, b) { try { return a.concat(b); } catch (e) { return a; } };",
 ].join('\n');
 
+// [v39 本轮变更 ①] 品牌图标：内联 SVG（地球经纬 + 出口节点），不引外部资源；
+//   favicon 同款 data URI，浏览器标签页与页面 logo 一致。
+const LOGO_SVG = "<svg class=\"ipck-logo-svg\" viewBox=\"0 0 40 40\" xmlns=\"http://www.w3.org/2000/svg\" role=\"img\" aria-label=\"ipckit\"><rect x=\"1\" y=\"1\" width=\"38\" height=\"38\" rx=\"11\" fill=\"#ffffff\" fill-opacity=\"0.16\" stroke=\"#ffffff\" stroke-opacity=\"0.62\" stroke-width=\"1.4\"/><circle cx=\"19.5\" cy=\"21\" r=\"11.2\" fill=\"none\" stroke=\"#eafff8\" stroke-width=\"1.7\"/><ellipse cx=\"19.5\" cy=\"21\" rx=\"4.8\" ry=\"11.2\" fill=\"none\" stroke=\"#eafff8\" stroke-width=\"1.3\" opacity=\"0.92\"/><path d=\"M8.3 21h22.4\" stroke=\"#eafff8\" stroke-width=\"1.3\" opacity=\"0.92\"/><path d=\"M10.2 15.6h18.6M10.2 26.4h18.6\" stroke=\"#eafff8\" stroke-width=\"1.1\" opacity=\"0.7\"/><circle cx=\"29.4\" cy=\"11.6\" r=\"3.6\" fill=\"#7ff0bd\" stroke=\"#0b6b74\" stroke-width=\"1.3\"/><path d=\"M27 14 23.6 17.4\" stroke=\"#7ff0bd\" stroke-width=\"1.7\" stroke-linecap=\"round\"/></svg>";
+const FAVICON_HREF = "data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2040%2040%22%3E%3Crect%20width%3D%2240%22%20height%3D%2240%22%20rx%3D%2211%22%20fill%3D%22%230d717c%22%2F%3E%3Ccircle%20cx%3D%2219.5%22%20cy%3D%2221%22%20r%3D%2211.2%22%20fill%3D%22none%22%20stroke%3D%22%23eafff8%22%20stroke-width%3D%221.8%22%2F%3E%3Cellipse%20cx%3D%2219.5%22%20cy%3D%2221%22%20rx%3D%224.8%22%20ry%3D%2211.2%22%20fill%3D%22none%22%20stroke%3D%22%23eafff8%22%20stroke-width%3D%221.4%22%2F%3E%3Cpath%20d%3D%22M8.3%2021h22.4%22%20stroke%3D%22%23eafff8%22%20stroke-width%3D%221.4%22%2F%3E%3Ccircle%20cx%3D%2229.4%22%20cy%3D%2211.6%22%20r%3D%223.8%22%20fill%3D%22%237ff0bd%22%2F%3E%3C%2Fsvg%3E";
+
 const LEGAL_SLUGS = {
   about: 'about', privacy: 'privacy', terms: 'terms', rights: 'data-rights',
 };
@@ -295,7 +300,7 @@ export function renderPage(opts) {
     '<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">',
     '<title>' + esc(title) + ' · ipckit</title>',
     robotsMeta,
-    '<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 32 32\'%3E%3Crect width=\'32\' height=\'32\' rx=\'8\' fill=\'%230b1020\'/%3E%3Crect x=\'5.5\' y=\'5.5\' width=\'21\' height=\'21\' rx=\'6\' fill=\'none\' stroke=\'%237aa2ff\'/%3E%3Ctext x=\'16\' y=\'20\' text-anchor=\'middle\' font-family=\'monospace\' font-size=\'11\' fill=\'%237aa2ff\'%3Eip%3C/text%3E%3C/svg%3E">',
+    '<link rel="icon" href="' + FAVICON_HREF + '">',
     '<meta name="description" content="' + esc(subtitle) + '">',
     '<meta name="theme-color" content="#0b1020">',
     gscMeta,
@@ -317,18 +322,16 @@ export function renderPage(opts) {
     '<body>',
     '<div class="ipck-shell">',
     '  <aside class="ipck-side">',
-    '    <div class="ipck-brand"><span class="ipck-logo">ip</span><span>' + esc(t(lang.code, 'shell.brand')) + '</span></div>',
+    '    <div class="ipck-brand">' + LOGO_SVG + '<span>' + esc(t(lang.code, 'shell.brand')) + '</span></div>',
     '    <div class="ipck-tag">' + esc(t(lang.code, 'shell.tagline')) + '</div>',
     '    <nav class="ipck-nav">' + navHtml(lang, structure) + '</nav>',
-    // [v32 本轮变更] 左下角补一个站点版本号，push 后一眼可确认更新是否生效
-    '    <div class="ipck-side-foot"><a href="mailto:' + esc(opts.contact) + '">' + esc(opts.contact) + '</a>' + footNote +
-      '<span class="ipck-build"> · ' + esc(opts.version || '') + '</span></div>',
+    // [v39 本轮变更 ③] 顶部邮箱/版本号整体移到页脚，PC 与手机都可见
+    '    <a class="ipck-lang ipck-lang-switch" href="' + esc(pathFor(other.slug, structure.slug)) + '">' + esc(t(lang.code, 'shell.langSwitch')) + '</a>',
     '  </aside>',
     '  <div class="ipck-main">',
     '    <header class="ipck-top">',
     '      <div class="ipck-top-row">',
     '        <div class="ipck-head-text"><h1>' + esc(title) + '</h1><p>' + esc(subtitle) + '</p></div>',
-    '        <a class="ipck-lang ipck-lang-switch" href="' + esc(pathFor(other.slug, structure.slug)) + '">' + esc(t(lang.code, 'shell.langSwitch')) + '</a>',
     '      </div>',
     '      <div class="ipck-progress" id="ipck-progress" hidden><div class="ipck-progress-fill"></div></div>',
     '    </header>',
@@ -338,7 +341,12 @@ export function renderPage(opts) {
     '    <main class="ipck-content">' + panels + '</main>',
     '    <footer class="ipck-sourcebar" id="ipck-sourcebar">' + sourcebar + '</footer>',
     // [v34 本轮变更] 法务入口常驻页面最下方，PC/手机统一，不再挤在顶部被语言按钮遮挡。
-    '    <footer class="ipck-legalbar"><nav class="ipck-legal-nav" aria-label="' + esc(t(lang.code, 'shell.brand')) + '">' + legalNavHtml(lang, structure) + '</nav></footer>',
+    // [v39 本轮变更 ③] 联系方式 + 站点版本号落在页面最下方，不再只留一个邮箱
+    '    <footer class="ipck-legalbar"><nav class="ipck-legal-nav" aria-label="' + esc(t(lang.code, 'shell.brand')) + '">' + legalNavHtml(lang, structure) + '</nav>' +
+    '      <div class="ipck-foot-contact"><span class="ipck-foot-contact-label">' +
+        esc(lang.code === 'zh-CN' ? '联系' : 'Contact') + '</span>' +
+      '<a href="mailto:' + esc(opts.contact) + '">' + esc(opts.contact) + '</a>' +
+      '<span class="ipck-build">' + esc(opts.version || '') + '</span></div></footer>',
     '  </div>',
     '</div>',
     browserScripts,

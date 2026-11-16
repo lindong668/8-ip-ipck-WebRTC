@@ -502,4 +502,134 @@ body{background:var(--bg)!important;color:var(--text)!important}
   .ipck-run-main,.ipck-lookup,.ipck-diag,.ipck-panel,.ipck-verdict{border-radius:12px!important}
 }
 
+
+/* ==========================================================================
+   [v39 本轮变更] 全站文字可读性收口 + 品牌图标 + 顶带对齐 + 联系方式落位
+   根因：v36 皮肤层把「白卡内的链接」和「深 teal 底页脚的链接」用同一条浅绿
+   #7ff0bd 覆盖 —— 浅绿压白卡对比度约 1.9:1，法务页邮箱、结果区 CC BY 4.0
+   署名几乎看不见；页脚 .ipck-attr-block b 又继承深色 --text 压在 #074a52 上。
+   本层按「容器底色」拆成两套语义色，并统一去掉文字透明度、抬字号与字重。
+   仅改视觉，不动任何文案 / 判定逻辑 / SEO 字段 / URL。
+   ========================================================================== */
+:root{
+  --ink:#12313a;          /* 白卡正文 */
+  --ink-soft:#33575f;     /* 白卡次要说明，白底对比 >= 7:1 */
+  --ink-link:#075e6a;     /* 白卡链接，白底对比 >= 7:1 */
+  --on-dark:#ffffff;      /* teal 深底正文 */
+  --on-dark-soft:#f0fffa; /* teal 深底次要 */
+  --on-dark-link:#a8ffd8; /* teal 深底链接，对比 >= 8:1 */
+}
+
+/* 1) 品牌图标：换成 38px 地球+出口节点 SVG，不再是两个字母 */
+.ipck-logo{width:38px!important;height:38px!important;border:0!important;
+  background:transparent!important;padding:0!important;border-radius:0!important;
+  display:block!important;font-size:0!important;color:transparent!important}
+.ipck-logo-svg{width:38px;height:38px;display:block;flex:0 0 auto}
+.ipck-brand{gap:11px!important;font-size:19px!important;letter-spacing:.01em;font-weight:700!important}
+
+/* 2) 语言按钮移到顶带右上角，与站名同一行对齐；PC / 手机统一，不再 fixed 漂浮 */
+.ipck-side{position:relative!important}
+.ipck-side .ipck-lang-switch{position:absolute!important;z-index:8!important;top:14px!important;
+  right:calc((100% - min(100%, var(--ipck-outer))) / 2 + var(--ipck-gut))!important;
+  background:rgba(255,255,255,.16)!important;border-color:rgba(255,255,255,.62)!important;
+  color:#fff!important;font-size:13px!important;font-weight:600!important;
+  padding:9px 14px!important;line-height:1.2!important}
+.ipck-side .ipck-lang-switch:hover{background:rgba(255,255,255,.28)!important;color:#fff!important}
+.ipck-head-text{padding-right:0!important}
+.ipck-top-row{display:block!important}
+
+/* 3) 联系方式 + 版本号：从侧栏移到页面最下方页脚，PC / 手机都可见且清晰 */
+.ipck-legalbar{display:flex!important;flex-wrap:wrap!important;align-items:center!important;
+  justify-content:space-between!important;gap:10px 20px!important}
+.ipck-legal-nav{gap:10px 20px!important}
+.ipck-foot-contact{display:flex!important;align-items:center!important;gap:12px!important;white-space:nowrap}
+.ipck-foot-contact-label{color:var(--on-dark-soft)!important;font-size:13px!important;font-weight:500!important}
+.ipck-foot-contact a{color:var(--on-dark-link)!important;font-size:13px!important;font-weight:700!important;
+  text-decoration:underline!important;text-underline-offset:3px;opacity:1!important}
+.ipck-foot-contact .ipck-build{color:#fff!important;font-size:13px!important;font-weight:700!important;
+  opacity:1!important;background:rgba(255,255,255,.14);padding:3px 9px;border-radius:7px}
+
+/* 4) 白卡内：正文 / 次要说明统一深墨、加大、加粗、去掉一切透明度 */
+.ipck-panel,.ipck-method,.ipck-legal,.ipck-lookup,.ipck-verdict,.ipck-hint,
+.ipck-cross,.ipck-net-legend,.ipck-subject,.ipck-error-box,.ipck-privacy,.ipck-diag{
+  color:var(--ink)!important;font-size:14px!important}
+.ipck-panel h2,.ipck-lookup-head h2,.ipck-field span,.ipck-summary-ip span,
+.ipck-table th,.ipck-legend-line,.ipck-net-legend b,.ipck-panel .ipck-result-title,
+.ipck-panel .ipck-sub-title{color:var(--ink-soft)!important;font-size:13px!important;
+  font-weight:700!important;opacity:1!important;text-transform:none!important;letter-spacing:.01em!important}
+.ipck-panel p,.ipck-method ol,.ipck-method li,.ipck-privacy p,.ipck-legal p,
+.ipck-legal-meta,.ipck-legal-links,.ipck-verdict p,.ipck-verdict-note,
+.ipck-verdict-sup,.ipck-verdict-exit,.ipck-hint p,.ipck-cross p,.ipck-scope,
+.ipck-precision,.ipck-empty,.ipck-lookup-head p,.ipck-attr,.ipck-sb-attr,
+.ipck-attr-block,.ipck-diag,.ipck-swipe-hint,.ipck-attr-note,.ipck-field span{
+  color:var(--ink-soft)!important;font-size:13px!important;font-weight:500!important;
+  line-height:1.85!important;opacity:1!important}
+.ipck-attr-block b{color:var(--ink)!important;font-weight:700!important;font-size:13px!important;opacity:1!important}
+.ipck-attr-note{display:block!important;opacity:1!important}
+.ipck-legal-meta,.ipck-legal-links{font-size:13px!important;opacity:1!important}
+.ipck-verdict-note,.ipck-verdict-sup{font-size:13px!important;opacity:1!important}
+.ipck-verdict h3{font-size:17px!important;font-weight:700!important}
+.ipck-btn.ghost{color:var(--ink)!important;font-weight:600!important;font-size:13px!important}
+.ipck-lookup-row input::placeholder{color:#476c74!important;opacity:1!important}
+
+/* 5) 白卡内链接：深青加粗带下划线；深底页脚链接另走浅绿高亮 */
+.ipck-legal a,.ipck-privacy a,.ipck-method a,.ipck-panel a:not(.ipck-lang),
+.ipck-verdict a,.ipck-attr a,.ipck-sb-attr a,.ipck-hint a,.ipck-cross a,
+.ipck-lookup a,.ipck-diag a{color:var(--ink-link)!important;font-weight:700!important;
+  text-decoration:underline!important;text-underline-offset:3px;opacity:1!important}
+.ipck-legal a:hover,.ipck-attr a:hover{color:#04454f!important}
+
+/* 6) teal 大底上、白卡之外的说明文字：纯白、13px、不透明 */
+.ipck-runbar .ipck-run-note,.ipck-content > .ipck-disclaimer,
+.ipck-content > .ipck-swipe-hint,.ipck-content > .ipck-sub-title,
+.ipck-content > .ipck-result-title{color:var(--on-dark)!important;font-size:13px!important;
+  font-weight:600!important;opacity:1!important;line-height:1.85!important}
+.ipck-content > .ipck-disclaimer{border-top-color:rgba(255,255,255,.5)!important;
+  padding-top:14px!important;font-size:13px!important}
+
+/* 7) 页脚 / 署名：深 teal 底一律浅字；之前 b 是深色 --text 压深底，几乎不可见 */
+.ipck-sourcebar,.ipck-legalbar{color:var(--on-dark-soft)!important;font-size:13px!important}
+.ipck-sourcebar *,.ipck-legalbar *{opacity:1!important}
+.ipck-sourcebar .ipck-attr-block,.ipck-sourcebar .ipck-attr,.ipck-sourcebar .ipck-sb-attr,
+.ipck-sourcebar .ipck-sb{font-size:13px!important;line-height:1.9!important;
+  color:var(--on-dark-soft)!important;font-weight:500!important}
+.ipck-sourcebar .ipck-attr-block b{color:#fff!important;font-weight:700!important;font-size:13px!important}
+.ipck-sourcebar .ipck-attr-block a,.ipck-sourcebar .ipck-attr a,
+.ipck-sourcebar .ipck-sb-attr a,.ipck-sourcebar a{color:var(--on-dark-link)!important;
+  font-weight:700!important;text-decoration:underline!important;text-underline-offset:3px}
+.ipck-sourcebar .ipck-attr-version,.ipck-sourcebar .ipck-build{color:#fff!important;
+  font-weight:700!important;font-size:13px!important}
+.ipck-sourcebar .ipck-attr-block{border-top-color:rgba(255,255,255,.4)!important}
+.ipck-legal-nav a{color:#fff!important;font-size:13px!important;font-weight:600!important}
+.ipck-legal-nav a:hover,.ipck-legal-nav a.is-active{color:var(--on-dark-link)!important}
+.ipck-side .ipck-tag{color:rgba(255,255,255,.92)!important;font-size:13px!important;font-weight:500!important}
+.ipck-nav a,.ipck-nav span{font-size:13px!important;font-weight:600!important;
+  color:#fff!important;opacity:1!important}
+
+/* 8) 手机端：图标 34px、语言按钮与站名同一行右侧、页脚联系方式换行 */
+@media(max-width:860px){
+  .ipck-side{padding:10px 108px 10px 14px!important;min-height:56px!important}
+  .ipck-brand{font-size:17px!important;gap:9px!important}
+  .ipck-logo,.ipck-logo-svg{width:34px!important;height:34px!important}
+  .ipck-side .ipck-lang-switch{top:14px!important;right:14px!important;
+    background:rgba(255,255,255,.96)!important;color:#075e6a!important;
+    border-color:rgba(13,113,124,.45)!important;padding:8px 11px!important;font-size:12px!important}
+  .ipck-side .ipck-lang-switch:hover{background:#fff!important;color:#075e6a!important}
+  .ipck-foot-contact{flex:0 0 100%!important;white-space:normal;flex-wrap:wrap;gap:8px 12px!important}
+  .ipck-legalbar{gap:12px 16px!important}
+  .ipck-nav a,.ipck-nav span{font-size:12px!important;padding:6px 8px!important}
+  .ipck-panel p,.ipck-legal p,.ipck-method ol,.ipck-verdict p{font-size:13px!important}
+}
+
+/* 9) [v39 收口补] 状态色加深：小字绿/红在浅底上原本只有 3.2~4.2:1，统一提到 >=4.5 */
+:root{--green:#0c8a5d;--red:#b83535}
+.ipck-badge{font-size:12px!important;font-weight:700!important}
+.ipck-badge.pub,.ipck-tag.ok{color:#0a7349!important}
+.ipck-badge.priv{color:#75500a!important}
+.ipck-badge.other{color:var(--ink-soft)!important}
+.ipck-diag-ok.ipck-diag-ok,.ipck-diag .ipck-diag-ok,.ipck-verdict.ok h3{color:#0a7349!important}
+.ipck-diag-warn.ipck-diag-warn,.ipck-diag .ipck-diag-warn{color:#855707!important}
+.ipck-diag-bad.ipck-diag-bad,.ipck-diag .ipck-diag-bad,.ipck-verdict.leak h3,.ipck-tag.bad,.ipck-error-box b{color:#a62d2d!important}
+.ipck-top p{color:rgba(255,255,255,.96)!important;font-size:13px!important;font-weight:600!important}
+
 `;
