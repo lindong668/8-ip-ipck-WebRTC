@@ -200,7 +200,7 @@ export function renderResultBlocks(data, labels, mode) {
   }
 
   // ---- WebRTC（v48 · 证据陈列口径）----
-  // 只陈述本次实际收到的候选：srflx / host 公网地址与本次连接出口不一致 = 观察到绕过。
+  // 只陈述本次实际收到的候选：srflx / host 公网地址与本次连接出口不一致 = 检测到泄露。
   // 零候选、只有内网或临时名称、缺同版本出口，一律「无法判定」，绝不写「没泄露 / 安全」。
   var rtcHtml;
   var baseline = d.baseline || null;
