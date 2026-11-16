@@ -32,7 +32,8 @@ crons = ["7 6 1,2,3 * *"]
 [vars]
 SITE_NAME = "ipckit"
 DEFAULT_LANG = "en"
-APP_VERSION = "v42"
+APP_VERSION = "v43"
+# [v43 本轮变更 ②] 根路径 / 不再 302 跳 /en/，直接 200 直出英文首页（Bing URL 检查不再判「重定向」）。
 # 对外收录态：取消 noindex / robots 全禁；sitemap.xml、robots.txt、ads.txt 由 Worker 直出。
 # 规范主机常量写死在 src/index.js 的 CANON_HOST，面板只需把 ipck.piccalc.com 绑到本 Worker。
 # 若 GSC 选「HTML 标记」验证，可加 GSC_VERIFY_META = "给你的content值"（留空即不输出该 meta）。

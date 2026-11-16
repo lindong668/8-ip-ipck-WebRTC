@@ -141,7 +141,7 @@ export default {
     // [v33] 主域 ipck.piccalc.com 与全部页面 / API 直接进入下方业务逻辑，
     //   不存在任何需要放行或拦截的临时探测主机。
     const url = new URL(request.url);
-    const pathname = url.pathname;
+    let pathname = url.pathname;
     const host = url.hostname.toLowerCase();
     const isCanonHost = host === CANON_HOST;
     const reqEnv = isCanonHost ? env : Object.assign({}, env || {}, { __IPCK_NOINDEX_HOST__: true });
@@ -184,11 +184,14 @@ export default {
       if (m) return redirect(CANON_ORIGIN + pathFor(m.lang.slug, m.structure.slug), 301, reqEnv);
     }
 
-    // 2) 根路径按 Accept-Language 分流到各自独立 URL（不用 ?lang=、不靠 cookie）
+    // 2) [v43 本轮变更 ①] 根路径不再 302 分流、不再补 /en/ 后缀：
+    //    https://ipck.piccalc.com 直接 200 直出英文首页内容，地址栏保持裸域名。
+    //    Bing / Google 检查裸根时看到的不再是「重定向链接，无法索引编制」。
+    //    做法：只把内部 pathname 改写为英文规范页，继续走下面第 5 段的渲染；
+    //    canonical / hreflang / sitemap 14 条仍全部指向 /en/，逐字零改动。
+    //    取舍：中文访客不再自动跳 /zh/，先落英文首页，右上角可切中文。
     if (pathname === '/') {
-      const al = (request.headers.get('accept-language') || '').toLowerCase();
-      const slug = al.indexOf('zh') >= 0 ? 'zh' : 'en';
-      return redirect(pathFor(slug, ''), 302, reqEnv);
+      pathname = pathFor(LANGS[XDEFAULT].slug, '');
     }
 
     // 3) favicon 兜底，避免刷 404
