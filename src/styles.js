@@ -750,4 +750,104 @@ body{background:var(--bg)!important;color:var(--text)!important}
   }
 }
 
+
+/* ==========================================================================
+   [v45 本轮变更] 品牌字标收口：修 v44「字标顶掉 / 盖掉标语与导航」
+   根因（实测 1440 / 390 真浏览器）：v44 把字标放大到 42px + 4.2px 外描边 +
+   padding-right:48px，且 .ipck-wordmark__swoosh 用 width:calc(100% + 34px)
+   绝对定位溢出品牌块；顶带又是 flex-wrap 一行排布。于是品牌块吃掉整行宽度，
+   标语、三个导航、右上语言按钮互相挤压 / 覆盖。
+   本层只做四件事，原有 CSS 一行未删：
+     1) 字标缩回 30px(PC)/24px(手机)，保留粗黑斜体 + 白描边 + 绿斜杠观感
+     2) 斜杠关进品牌块内（overflow:hidden + left/right:0;width:100%）
+     3) 顶带右侧留 130px(PC)/108px(手机) 给绝对定位的语言按钮
+     4) 标语与导航提层级、允许换行，互不遮挡
+   ========================================================================== */
+.ipck-side{
+  position:relative!important;
+  align-items:center!important;
+  column-gap:18px!important;
+  row-gap:8px!important;
+  padding:14px 130px 14px 20px!important;
+}
+.ipck-side > .ipck-brand{
+  flex:0 0 auto!important;
+  position:relative!important;
+  z-index:2!important;
+  gap:10px!important;
+  margin:0!important;
+  max-width:100%!important;
+}
+.ipck-logo-svg{width:36px!important;height:36px!important}
+.ipck-wordmark{
+  flex:0 0 auto!important;
+  overflow:hidden!important;
+  padding:3px 2px 8px!important;
+}
+.ipck-wordmark__text{
+  font-size:30px!important;
+  padding-right:14px!important;
+  letter-spacing:-.05em!important;
+  -webkit-text-stroke:2.6px #ffffff;
+  text-shadow:2px 2px 0 rgba(6,74,82,.45),0 3px 6px rgba(0,0,0,.16);
+}
+.ipck-wordmark__swoosh{
+  position:absolute!important;
+  left:0!important;right:0!important;bottom:0!important;
+  width:100%!important;height:30px!important;
+  pointer-events:none!important;
+}
+.ipck-side > .ipck-tag{
+  flex:1 1 auto!important;
+  min-width:0!important;
+  position:relative!important;
+  z-index:1!important;
+  margin:0!important;
+  color:#fff!important;
+  font-size:15.5px!important;
+  font-weight:700!important;
+  line-height:1.35!important;
+  white-space:normal!important;
+  overflow-wrap:anywhere;
+}
+.ipck-nav{
+  flex:0 0 auto!important;
+  flex-direction:row!important;
+  position:relative!important;
+  z-index:1!important;
+  margin:0!important;
+  gap:8px!important;
+}
+.ipck-nav a,.ipck-nav span{white-space:nowrap!important}
+.ipck-side .ipck-lang-switch{
+  position:absolute!important;
+  top:14px!important;right:20px!important;
+  z-index:3!important;
+}
+@media(max-width:860px){
+  .ipck-side{
+    padding:10px 108px 10px 14px!important;
+    column-gap:0!important;
+    row-gap:6px!important;
+  }
+  .ipck-logo-svg{width:32px!important;height:32px!important}
+  .ipck-side > .ipck-brand{gap:9px!important}
+  .ipck-wordmark{padding:2px 2px 6px!important}
+  .ipck-wordmark__text{
+    font-size:24px!important;
+    padding-right:10px!important;
+    -webkit-text-stroke:2.2px #ffffff;
+  }
+  .ipck-wordmark__swoosh{height:24px!important}
+  .ipck-side > .ipck-tag{
+    flex:0 0 100%!important;
+    font-size:12.5px!important;
+  }
+  .ipck-nav{
+    flex:0 0 100%!important;
+    margin-right:-94px!important;
+    overflow:visible!important;
+  }
+  .ipck-side .ipck-lang-switch{top:12px!important;right:14px!important}
+}
 `;
