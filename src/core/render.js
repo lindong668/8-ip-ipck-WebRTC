@@ -98,12 +98,25 @@ export function judgeLeak(list, conn) {
     diffs: diffs, same: same, skipped: skipped, connV4: c4, connV6: c6
   };
 }
-export function verdictCardHtml(state, L, j) {
+// [v48] 结论卡只陈述本次观测证据，不下「安全 / 没泄露」承诺。
+//   kind 区分三种「无法判定」：接口不可用 / 零候选 / 有候选但无公网反射地址。
+export function verdictCardHtml(state, L, j, detail) {
+  var d = detail || {};
+  var kind = d.kind || 'judged';
   var cls = state === 'leak' ? 'leak' : (state === 'gray' ? 'gray' : 'ok');
   var out = '<div class="ipck-verdict ' + cls + '">';
-  if (state === 'leak') {
+  if (kind === 'unsupported') {
+    out += '<h3>' + escHtml(L('rtc.verdict.unsupportedTitle')) + '</h3>';
+    out += '<p class="ipck-verdict-note">' + escHtml(L('rtc.verdict.unsupportedNote')) + '</p>';
+  } else if (kind === 'noCandidates') {
+    out += '<h3>' + escHtml(L('rtc.verdict.grayTitle')) + '</h3>';
+    out += '<p class="ipck-verdict-note">' + escHtml(L('rtc.verdict.grayNote')) + '</p>';
+  } else if (kind === 'noPublic') {
+    out += '<h3>' + escHtml(L('rtc.verdict.noPublicTitle')) + '</h3>';
+    out += '<p class="ipck-verdict-note">' + escHtml(L('rtc.verdict.noPublicNote')) + '</p>';
+  } else if (state === 'leak') {
     out += '<h3>' + escHtml(L('rtc.verdict.leakTitle')) + '</h3>';
-    out += '<p class="ipck-verdict-note">' + escHtml(L('rtc.verdict.leakNote')) + '</p>';
+    out += '<p class="ipck-verdict-note">' + escHtml(String(L('rtc.verdict.leakNote')).split('{n}').join(String((j && j.diffs && j.diffs.length) || 0))) + '</p>';
     out += '<p class="ipck-verdict-sup">' + escHtml(L('rtc.verdict.leakSup')) + '</p>';
   } else if (state === 'gray') {
     out += '<h3>' + escHtml(L('rtc.verdict.grayTitle')) + '</h3>';
@@ -117,6 +130,12 @@ export function verdictCardHtml(state, L, j) {
     var line = L('rtc.verdict.exitLine').split('{v4}').join(j.connV4 || L('rtc.cmp.na'))
       .split('{v6}').join(j.connV6 || L('rtc.cmp.na'));
     out += '<p class="ipck-verdict-exit">' + escHtml(line) + '</p>';
+  }
+  if (d.baseline) {
+    var hits = d.baselineHits || [];
+    out += '<p class="ipck-verdict-sup">' + escHtml(hits.length
+      ? String(L('rtc.verdict.baselineHit')).split('{n}').join(String(hits.length))
+      : L('rtc.verdict.baselineMiss')) + '</p>';
   }
   return out + '</div>';
 }
@@ -180,12 +199,15 @@ export function renderResultBlocks(data, labels, mode) {
     ipHtml = big + grid + attrHtml;
   }
 
-  // ---- WebRTC（v28 · host 公网 + srflx 公网参与判定；relay / prflx 只做展示）----
+  // ---- WebRTC（v48 · 证据陈列口径）----
+  // 只陈述本次实际收到的候选：srflx / host 公网地址与本次连接出口不一致 = 观察到绕过。
+  // 零候选、只有内网或临时名称、缺同版本出口，一律「无法判定」，绝不写「没泄露 / 安全」。
   var rtcHtml;
+  var baseline = d.baseline || null;
   if (!started) {
     rtcHtml = '<div class="ipck-empty">' + escHtml(L('ov.empty')) + '</div>';
   } else if (!d.rtc || !d.rtc.supported) {
-    rtcHtml = verdictCardHtml('gray', L, null);
+    rtcHtml = verdictCardHtml('gray', L, null, { kind: 'unsupported', baseline: baseline, baselineHits: [] });
   } else {
     var list = d.rtc.candidates || [];
     var conn = { ipv4: d.rtc.connectionIpv4 || null, ipv6: d.rtc.connectionIpv6 || null };
@@ -196,11 +218,23 @@ export function renderResultBlocks(data, labels, mode) {
         else if (ipVersionOf(legacy) === 6) conn.ipv6 = legacy;
       }
     }
-    if (!list.length) {
-      rtcHtml = verdictCardHtml('gray', L, null);
-    } else {
-      var j = judgeLeak(list, conn);
-      // [v31 本轮变更 ⑩] 明确区分公网 IP / 内网局域网 IP：先统计，再给图例
+    // 公网候选 = srflx 反射地址或 host 公网地址，剔除 .local 临时名称与私网。
+    var publicRows = list.filter(function (c) {
+      return c && !c.obfuscated && (c.type === 'srflx' || c.type === 'host') &&
+        ipVersionOf(c.address) !== null && !isPrivateHost(c.address, false);
+    });
+    var srflxCount = publicRows.filter(function (c) { return c.type === 'srflx'; }).length;
+    var baselineHits = [];
+    if (baseline && Array.isArray(baseline.addresses)) {
+      publicRows.forEach(function (c) {
+        var a = String(c.address).split('%')[0].trim().toLowerCase();
+        if (baseline.addresses.indexOf(a) >= 0) baselineHits.push(c.address);
+      });
+    }
+    var baseDetail = { baseline: baseline, baselineHits: baselineHits };
+
+    // 候选全量陈列：不管能不能下结论，拿到什么就列什么。
+    function tableHtml() {
       var pub = 0, priv = 0, otherN = 0;
       for (var z = 0; z < list.length; z++) {
         var kz = classifyCandidate(list[z]);
@@ -208,15 +242,13 @@ export function renderResultBlocks(data, labels, mode) {
         else if (kz === 'hostPrivate' || list[z].obfuscated) priv += 1;
         else otherN += 1;
       }
-      // v29 · 顶部统一提示风险结论；下方表格标注具体泄露类型与来源归类
-      rtcHtml = verdictCardHtml(j.state, L, j);
-      var legendLine = L('rtc.legendLine').split('{pub}').join(String(pub))
-        .split('{priv}').join(String(priv)).split('{other}').join(String(otherN));
-      rtcHtml += '<div class="ipck-net-legend"><b>' + escHtml(L('rtc.netLegendTitle')) + '</b>' +
+      var s = '<div class="ipck-net-legend"><b>' + escHtml(L('rtc.netLegendTitle')) + '</b>' +
         '<span class="ipck-badge pub">' + escHtml(L('rtc.badgePublic')) + '</span>' +
         '<span class="ipck-badge priv">' + escHtml(L('rtc.badgePrivate')) + '</span>' +
-        '<span class="ipck-legend-line">' + escHtml(legendLine) + '</span></div>';
-      rtcHtml += '<div class="ipck-table-wrap"><table class="ipck-table"><thead><tr>' +
+        '<span class="ipck-legend-line">' + escHtml(String(L('rtc.legendLine'))
+          .split('{pub}').join(String(pub)).split('{priv}').join(String(priv))
+          .split('{other}').join(String(otherN))) + '</span></div>';
+      s += '<div class="ipck-table-wrap"><table class="ipck-table"><thead><tr>' +
         '<th>' + escHtml(L('rtc.col.type')) + '</th>' +
         '<th>' + escHtml(L('rtc.col.address')) + '</th>' +
         '<th>' + escHtml(L('rtc.col.network')) + '</th>' +
@@ -226,18 +258,18 @@ export function renderResultBlocks(data, labels, mode) {
         '</tr></thead><tbody>';
       for (var k = 0; k < list.length; k++) {
         var c = list[k];
-        var kind = classifyCandidate(c);
+        var rowKind = classifyCandidate(c);
         var addr = c.obfuscated
           ? escHtml(c.address) + ' (' + escHtml(L('rtc.alias')) + ')'
           : escHtml(c.address);
-        var net = kind === 'hostPrivate' ? L('rtc.private')
-          : (kind === 'hostPublic' ? L('rtc.publicHost')
-            : (kind === 'srflx' || kind === 'prflx' ? L('rtc.public')
+        var net = rowKind === 'hostPrivate' ? L('rtc.private')
+          : (rowKind === 'hostPublic' ? L('rtc.publicHost')
+            : (rowKind === 'srflx' || rowKind === 'prflx' ? L('rtc.public')
               : L('rtc.notExposed')));
         var st = c.obfuscated ? L('rtc.notExposed') : L('state.observed');
         var dot = c.obfuscated ? 'n' : 'g';
         var cmp;
-        if (kind === 'hostPublic' || kind === 'srflx') {
+        if (rowKind === 'hostPublic' || rowKind === 'srflx') {
           var vv = ipVersionOf(c.address);
           var ex = vv === 4 ? conn.ipv4 : (vv === 6 ? conn.ipv6 : null);
           cmp = !ex ? L('rtc.cmp.noPeer')
@@ -245,24 +277,39 @@ export function renderResultBlocks(data, labels, mode) {
         } else {
           cmp = L('rtc.cmp.notUsed');
         }
-        // [v31] 每行「网络」列用配色徽标标出公网 / 内网
-        var netCls = kind === 'hostPrivate' ? 'priv'
-          : ((kind === 'hostPublic' || kind === 'srflx' || kind === 'prflx' || kind === 'relay') ? 'pub' : 'other');
+        var netCls = rowKind === 'hostPrivate' ? 'priv'
+          : ((rowKind === 'hostPublic' || rowKind === 'srflx' || rowKind === 'prflx' || rowKind === 'relay') ? 'pub' : 'other');
         var netBadge = '<span class="ipck-badge ' + netCls + '">' + escHtml(net) + '</span>';
-        rtcHtml += '<tr><td>' + escHtml(c.type) + '</td><td>' + addr + '</td><td>' + netBadge +
+        s += '<tr><td>' + escHtml(c.type) + '</td><td>' + addr + '</td><td>' + netBadge +
           '</td><td><span class="ipck-dot ' + dot + '"></span>' + escHtml(st) + '</td><td>' +
-          escHtml(cmp) + '</td><td>' + escHtml(L('rtc.cat.' + kind)) + '</td></tr>';
+          escHtml(cmp) + '</td><td>' + escHtml(L('rtc.cat.' + rowKind)) + '</td></tr>';
       }
-      rtcHtml += '</tbody></table></div>';
-      // [v32 本轮变更] 常驻滑动提示：不滑动也能一眼看出表格可横向查看
-      rtcHtml += '<p class="ipck-swipe-hint">' + escHtml(L('rtc.swipeHint')) + '</p>';
+      s += '</tbody></table></div>';
+      s += '<p class="ipck-swipe-hint">' + escHtml(L('rtc.swipeHint')) + '</p>';
       var stateTxt = d.rtc.timedOut ? L('rtc.metaTimeout') : L('rtc.metaComplete');
-      var meta = L('rtc.metaLine').split('{n}').join(String(list.length))
+      var meta = String(L('rtc.metaLine')).split('{n}').join(String(list.length))
         .split('{ms}').join(String(d.rtc.waitedMs == null ? 0 : d.rtc.waitedMs))
         .split('{state}').join(stateTxt);
-      rtcHtml += '<p class="ipck-precision">' + escHtml(meta) + '</p>';
-      rtcHtml += '<p class="ipck-precision">' + escHtml(L('rtc.precisionBody')) + '</p>';
-      rtcHtml += '<p class="ipck-scope">' + escHtml(L('rtc.scope')) + '</p>';
+      s += '<p class="ipck-precision">' + escHtml(meta) + '</p>';
+      var groups = d.rtc.groups || [];
+      var answered = typeof d.rtc.answeredGroups === 'number' ? d.rtc.answeredGroups
+        : groups.filter(function (g) { return (g.srflxCount || 0) > 0; }).length;
+      var total = typeof d.rtc.totalGroups === 'number' ? d.rtc.totalGroups : (groups.length || 1);
+      s += '<p class="ipck-precision">' + escHtml(String(L('rtc.metaStun'))
+        .split('{a}').join(String(answered)).split('{t}').join(String(total))) + '</p>';
+      s += '<p class="ipck-precision">' + escHtml(L('rtc.precisionBody')) + '</p>';
+      s += '<p class="ipck-scope">' + escHtml(L('rtc.scope')) + '</p>';
+      return s;
+    }
+
+    if (!list.length) {
+      rtcHtml = verdictCardHtml('gray', L, null,
+        Object.assign({ kind: 'noCandidates' }, baseDetail));
+    } else {
+      var j = judgeLeak(list, conn);
+      var hasComparable = publicRows.length > 0 && j.state !== 'gray';
+      var detail = Object.assign({ kind: hasComparable ? 'judged' : 'noPublic' }, baseDetail);
+      rtcHtml = verdictCardHtml(hasComparable ? j.state : 'gray', L, j, detail) + tableHtml();
     }
   }
 

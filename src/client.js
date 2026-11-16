@@ -172,6 +172,41 @@ export const CLIENT_JS = `
     return out + attrHtml(ip);
   }
 
+  // [v48] 上次观测对照：只在浏览器本地保存上次实际看到的公网候选地址，供复测比对。
+  //   不上传、不写服务端；零公网候选时不覆盖，避免把上一次的观测抹掉。
+  //   清除浏览器本站数据即可删除，页面 runNotice 已明确告知。
+  var BASE_KEY = 'ipckit.lastObserved.v1';
+  function loadBaseline() {
+    try {
+      var raw = localStorage.getItem(BASE_KEY);
+      if (!raw) return null;
+      var j = JSON.parse(raw);
+      return (j && Array.isArray(j.addresses)) ? j : null;
+    } catch (e) { return null; }
+  }
+  function saveBaseline(data) {
+    try {
+      var rtc = data && data.rtc;
+      if (!rtc || !rtc.supported || !Array.isArray(rtc.candidates)) return;
+      var addrs = [];
+      rtc.candidates.forEach(function (c) {
+        if (!c || c.obfuscated || !c.address) return;
+        if (c.type !== 'srflx' && c.type !== 'host') return;
+        var a = String(c.address).split('%')[0].trim().toLowerCase();
+        if (/\.local\.?$/.test(a) || !/^[0-9a-fA-F:.]+$/.test(a)) return;
+        if (addrs.indexOf(a) < 0) addrs.push(a);
+      });
+      if (!addrs.length) return;
+      localStorage.setItem(BASE_KEY, JSON.stringify({
+        addresses: addrs,
+        exitV4: rtc.connectionIpv4 || null,
+        exitV6: rtc.connectionIpv6 || null,
+        srflxCount: rtc.candidates.filter(function (c) { return c && c.type === 'srflx'; }).length,
+        at: new Date().toISOString()
+      }));
+    } catch (e) {}
+  }
+
   function clearResults() {
     ['ip', 'rtc'].forEach(function (k) {
       var el = document.getElementById('ipck-' + k);
@@ -327,7 +362,7 @@ export const CLIENT_JS = `
     try {
       var rtcTask = features.webrtc
         ? (window.IPCK_RTC && typeof window.IPCK_RTC.collectCandidates === 'function'
-            ? window.IPCK_RTC.collectCandidates({ timeoutMs: 5000 }).catch(rtcDisabled)
+            ? window.IPCK_RTC.collectCandidates({ timeoutMs: 8000 }).catch(rtcDisabled)
             : rtcDisabled())
         : rtcDisabled();
 
@@ -366,7 +401,9 @@ export const CLIENT_JS = `
       runError = jsErrText(e);
       data.diag = { apiDown: true, apiTimeout: false, edgeOk: false, edgeMissing: false };
     } finally {
+      data.baseline = loadBaseline();   // 先取「上次」，再渲染，才会形成前后对照
       paint(data);
+      saveBaseline(data);               // 本次观测留给下一次复测
       if (runError) reportScriptError(runError);   // [v31] 不静默失败
       running = false;
       setRunning(false);

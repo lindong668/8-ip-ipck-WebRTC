@@ -1,14 +1,18 @@
-// L1 · WebRTC ICE 候选采集（精准观测版）。
-// 只报告浏览器本次实际产生的候选：严格按 RFC 5245 字段校验、按 type+address+raddr 去重，
-// 等 gathering 完成或到达时限才收口（不再一拿到 srflx 就 200ms 截断，避免漏 relay / IPv6）。
-// .local 一律标为浏览器临时名称（不是真实内网地址），不猜 192.168.x；不下「是否泄露」结论。
-export const STUN_URLS = [
-  'stun:stun.l.google.com:19302',
-  'stun:stun1.l.google.com:19302',
-  'stun:stun.cloudflare.com:3478',
+// L1 · WebRTC ICE 候选采集（多端点并发观测版）。
+// [v48 本轮变更] 真实泄露检测的地基：一个 STUN 端点没应答 ≠ 整条 UDP 路径没应答。
+//   并发多组独立 RTCPeerConnection，每组绑不同公共 STUN / 不同端口，
+//   任一组返回 srflx 就能与本次连接出口比对；合并去重后全量陈列，不做安全承诺。
+//   零 srflx 只写「未收到应答」，不猜是谁拦的、不甩锅浏览器或扩展。
+//   .local 一律标为浏览器临时名称（不是真实内网地址），不猜 192.168.x。
+export const STUN_GROUPS = [
+  { id: 'g1', urls: ['stun:stun.l.google.com:19302'] },
+  { id: 'g2', urls: ['stun:stun1.l.google.com:19302'] },
+  { id: 'g3', urls: ['stun:stun.cloudflare.com:3478', 'stun:stun.cloudflare.com:53'] },
+  { id: 'g4', urls: ['stun:global.stun.twilio.com:3478'] },
 ];
-export const STUN_SOURCE = 'standard public STUN endpoints (observed candidates only)';
-export const COLLECT_TIMEOUT_MS = 5000;
+export const STUN_URLS = STUN_GROUPS.reduce(function (a, g) { return a.concat(g.urls); }, []);
+export const STUN_SOURCE = 'multiple public STUN endpoints, concurrent groups (observed candidates only)';
+export const COLLECT_TIMEOUT_MS = 8000;
 
 const CANDIDATE_TYPES = ['host', 'srflx', 'prflx', 'relay'];
 
@@ -68,31 +72,24 @@ export function parseCandidate(line) {
   };
 }
 
-export async function collectCandidates(options) {
-  const opts = options || {};
-  const stunUrls = opts.stunUrls || STUN_URLS;
-  const timeoutMs = opts.timeoutMs || COLLECT_TIMEOUT_MS;
-  const startedAt = Date.now();
-  function unsupported(reason) {
-    return {
-      supported: false, candidates: [], uniqueCount: 0,
-      gatheringComplete: false, timedOut: false, reason: reason,
-      source: STUN_SOURCE, stunUrls: stunUrls, waitedMs: 0,
-      observedAt: new Date().toISOString(),
-    };
+// 单组独立采集：一个端点被掐不会拖垮其它组。
+async function collectOne(group, timeoutMs) {
+  var base = { id: group.id, urls: group.urls, supported: false, candidates: [],
+    complete: false, timedOut: false, srflxCount: 0, reason: '' };
+  if (typeof RTCPeerConnection === 'undefined') {
+    base.reason = 'RTCPeerConnection unavailable';
+    return base;
   }
-  if (typeof RTCPeerConnection === 'undefined') return unsupported('RTCPeerConnection unavailable');
-  let pc;
-  try { pc = new RTCPeerConnection({ iceServers: [{ urls: stunUrls }] }); }
-  catch (e) { return unsupported('RTCPeerConnection init failed'); }
+  var pc;
+  try { pc = new RTCPeerConnection({ iceServers: [{ urls: group.urls }] }); }
+  catch (e) { base.reason = 'RTCPeerConnection init failed'; return base; }
+  base.supported = true;
 
-  const found = [];
-  const seen = Object.create(null);
-  let settle;
-  const done = new Promise(function (resolve) { settle = resolve; });
-  let finished = false;
-  let complete = false;
-  let timedOut = false;
+  var found = [];
+  var seen = Object.create(null);
+  var settle;
+  var done = new Promise(function (resolve) { settle = resolve; });
+  var finished = false, complete = false, timedOut = false;
   function finish(why) {
     if (finished) return;
     finished = true;
@@ -101,9 +98,9 @@ export async function collectCandidates(options) {
     settle();
   }
   function push(line) {
-    const p = parseCandidate(line);
+    var p = parseCandidate(line);
     if (!p) return;
-    const key = p.type + '|' + p.address + '|' + (p.relatedAddress || '');
+    var key = p.type + '|' + p.address + '|' + (p.relatedAddress || '');
     if (seen[key]) return;
     seen[key] = true;
     found.push(p);
@@ -119,33 +116,78 @@ export async function collectCandidates(options) {
   } catch (e) {}
   try { pc.createDataChannel('ipckit'); } catch (e) {}
   try {
-    const offer = await pc.createOffer();
+    var offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
   } catch (e) { finish('error'); }
-  const hardTimer = setTimeout(function () { finish('timeout'); }, timeoutMs);
+  var hardTimer = setTimeout(function () { finish('timeout'); }, timeoutMs);
   await done;
   clearTimeout(hardTimer);
   try { pc.close(); } catch (e) {}
+
+  base.candidates = found;
+  base.complete = complete;
+  base.timedOut = timedOut;
+  base.srflxCount = found.filter(function (c) { return c.type === 'srflx'; }).length;
+  if (!found.length) base.reason = complete ? 'gathering complete, no candidates' : 'no STUN response';
+  return base;
+}
+
+export async function collectCandidates(options) {
+  const opts = options || {};
+  const groups = opts.stunGroups || STUN_GROUPS;
+  const timeoutMs = opts.timeoutMs || COLLECT_TIMEOUT_MS;
+  const startedAt = Date.now();
+
+  const results = await Promise.all(groups.map(function (g) {
+    return collectOne(g, timeoutMs).catch(function (e) {
+      return { id: g.id, urls: g.urls, supported: false, candidates: [],
+        complete: false, timedOut: false, srflxCount: 0, reason: String((e && e.message) || e) };
+    });
+  }));
+
+  const found = [];
+  const seen = Object.create(null);
+  results.forEach(function (r) {
+    (r.candidates || []).forEach(function (p) {
+      const key = p.type + '|' + p.address + '|' + (p.relatedAddress || '');
+      if (seen[key]) return;
+      seen[key] = true;
+      found.push(p);
+    });
+  });
+
+  const anySupported = results.some(function (r) { return r.supported; });
   return {
-    supported: true,
+    supported: anySupported,
     candidates: found,
     uniqueCount: found.length,
-    gatheringComplete: complete,
-    timedOut: timedOut,
+    gatheringComplete: results.every(function (r) { return r.complete; }),
+    timedOut: results.some(function (r) { return r.timedOut; }),
+    reason: anySupported ? '' : 'RTCPeerConnection unavailable',
     source: STUN_SOURCE,
-    stunUrls: stunUrls,
+    stunUrls: STUN_URLS,
+    stunGroups: groups,
+    groups: results.map(function (r) {
+      return { id: r.id, urls: r.urls, supported: r.supported, srflxCount: r.srflxCount || 0,
+        candidateCount: (r.candidates || []).length, complete: r.complete,
+        timedOut: r.timedOut, reason: r.reason || '' };
+    }),
+    answeredGroups: results.filter(function (r) { return (r.srflxCount || 0) > 0; }).length,
+    totalGroups: results.length,
     waitedMs: Date.now() - startedAt,
     observedAt: new Date().toISOString(),
   };
 }
 
 export const RTC_BROWSER_SRC = [
+  'const STUN_GROUPS = ' + JSON.stringify(STUN_GROUPS) + ';',
   'const STUN_URLS = ' + JSON.stringify(STUN_URLS) + ';',
   'const STUN_SOURCE = ' + JSON.stringify(STUN_SOURCE) + ';',
   'const COLLECT_TIMEOUT_MS = ' + JSON.stringify(COLLECT_TIMEOUT_MS) + ';',
   'const CANDIDATE_TYPES = ' + JSON.stringify(CANDIDATE_TYPES) + ';',
   isIpLiteral.toString(),
   parseCandidate.toString(),
+  collectOne.toString(),
   collectCandidates.toString(),
-  'window.IPCK_RTC = { parseCandidate, collectCandidates, isIpLiteral, STUN_URLS, STUN_SOURCE, COLLECT_TIMEOUT_MS };',
+  'window.IPCK_RTC = { parseCandidate, collectCandidates, isIpLiteral, STUN_GROUPS, STUN_URLS, STUN_SOURCE, COLLECT_TIMEOUT_MS };',
 ].join('\n');
