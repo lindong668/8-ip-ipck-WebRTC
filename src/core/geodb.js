@@ -157,6 +157,30 @@ async function load(env) {
   return CACHE;
 }
 
+// [v50] 轻量库元信息：只读 3KB 的 meta.json，不解析 2.5MB 的 dict.json。
+//   页面渲染与 /api/health 只需要 status / version 做署名与健康判断；
+//   真正查表时才由 lookup() 触发完整 load()。避免冷启动多个 isolate 各自解析大字典。
+export async function libMetaLight(env) {
+  if (env && env.ASSETS) {
+    try {
+      const t = await assetText(env, '/geo/meta.json');
+      if (t) {
+        const j = JSON.parse(t);
+        if (j && j.status === 'ready') {
+          const m = Object.assign({}, metaFrom(j, IP_LIB), {
+            rowCount: j.rowCount || null,
+            from: 'assets',
+            mode: j.mode || null,
+          });
+          delete m.parts;
+          return m;
+        }
+      }
+    } catch (_) { /* 落到完整探测，绝不编造库状态 */ }
+  }
+  return libMeta(env);
+}
+
 export async function libMeta(env) {
   const c = await load(env);
   const m = Object.assign({}, c.meta, {

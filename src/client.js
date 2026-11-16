@@ -44,7 +44,10 @@ export const CLIENT_JS = `
   var btn = document.getElementById('ipck-run');
   var bar = document.getElementById('ipck-progress');
   var diag = document.getElementById('ipck-diag');
-  var API_TIMEOUT_MS = 4000;
+  // [v50] 冷启动加载离线库 + 全局网络转发绕路时，旧的 4 秒上限会把正常请求误判成超时。
+  //   放宽到 12 秒，并对「超时 / 5xx」自动重试一次：第二个请求到的是已热 isolate，通常毫秒级返回。
+  //   GET 幂等，不写任何服务端状态、不重复触发采集。
+  var API_TIMEOUT_MS = 12000;
   // h9 · 任意 IP 输入区
   var input = document.getElementById('ipck-ip-input');
   var lookupBtn = document.getElementById('ipck-lookup-run');
@@ -314,7 +317,7 @@ export const CLIENT_JS = `
     }
   }
 
-  function fetchJson(path) {
+  function fetchJsonOnce(path) {
     return new Promise(function (resolve, reject) {
       var ctl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
       var settled = false;
@@ -336,6 +339,14 @@ export const CLIENT_JS = `
         if (settled) return;
         settled = true; clearTimeout(timer); reject(e);
       });
+    });
+  }
+  function fetchJson(path) {
+    return fetchJsonOnce(path).catch(function (e) {
+      var msg = String((e && e.message) || e || '');
+      // 本文件是模板字符串，正则里不写反斜杠转义，避免外层吞掉。
+      if (!/timeout|status-5/.test(msg)) throw e;
+      return fetchJsonOnce(path);
     });
   }
   function probe(path, key) {

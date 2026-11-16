@@ -6,7 +6,7 @@
 import { LANGS, XDEFAULT, SITE, STRUCTURES, LEGAL_KEYS, matchPath, pathFor, t } from './i18n.js';
 import { renderPage } from './ui.js';
 import { readIpInfo, readArbitraryIp } from './core/ip.js';
-import { libMeta, ATTRIBUTION } from './core/geodb.js';
+import { libMeta, libMetaLight, ATTRIBUTION } from './core/geodb.js';
 import { autoInstall, lastError, installedMonth, RUNTIME_NOTE } from './core/autolib.js';
 // [v33] 站点功能收敛为 IP 归属查询 + WebRTC 自查；其余模块整体移除。
 
@@ -216,7 +216,7 @@ export default {
             ? 'connecting IP present; attribution from offline library only'
             : 'no connecting IP header available for this request',
         },
-        lib: await libMeta(reqEnv),
+        lib: await libMetaLight(reqEnv),
         attribution: ATTRIBUTION,
         consentRequired: false,
         features: { ip: true, arbitraryIp: true, webrtc: true },
@@ -306,7 +306,7 @@ export default {
       contact: SITE.contact,
       version: SITE.version,
       policyVersion: SITE.policyVersion,
-      lib: await libMeta(reqEnv),
+      lib: await libMetaLight(reqEnv),
     });
     return html(rendered.html, 200, rendered.nonce, reqEnv);
   },
