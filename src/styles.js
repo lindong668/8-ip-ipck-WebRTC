@@ -705,4 +705,49 @@ body{background:var(--bg)!important;color:var(--text)!important}
   .ipck-side > .ipck-brand{gap:9px!important}
 }
 
+
+
+/* ==========================================================================
+   [v44 本轮变更 ③] 品牌字标重制：细斜体 → 参考图那种超粗黑斜体。
+   根因：v42 用系统 sans 的 font-weight:800 + italic，Chromium 里合成斜体笔画很细，
+   加上 3.2/5.2 的细 swoosh、1.3~1.7 的细线地球，整体像「一行斜体小字」而不是 logo。
+   本层：900 字重 + 2.6px 白色外描边（跨字体环境都撑得粗）+ 阴影立体感，
+   并同步放大图标与对勾。追加式覆盖，原有 CSS 一行未删，不引任何 webfont。
+   ========================================================================== */
+.ipck-logo-svg{width:44px!important;height:44px!important}
+.ipck-side > .ipck-brand{gap:12px!important}
+.ipck-wordmark__text{
+  font-family:'Arial Rounded MT Bold','Trebuchet MS','DejaVu Sans',system-ui,sans-serif!important;
+  font-style:italic!important;
+  font-weight:900!important;
+  font-size:42px!important;
+  line-height:1!important;
+  letter-spacing:-.07em!important;
+  padding-right:48px!important;
+  transform:skewX(-4deg)!important;
+  -webkit-text-stroke:4.2px #ffffff;
+  paint-order:stroke fill;
+  text-shadow:2px 3px 0 rgba(6,74,82,.5), 0 4px 8px rgba(0,0,0,.18);
+}
+.ipck-wordmark__swoosh{
+  height:46px!important;
+  bottom:-12px!important;
+  left:-6px!important;
+  width:calc(100% + 34px)!important;
+}
+@media(max-width:860px){
+  .ipck-logo-svg{width:38px!important;height:38px!important}
+  .ipck-side > .ipck-brand{gap:9px!important}
+  .ipck-wordmark__text{
+    font-size:34px!important;
+    padding-right:38px!important;
+    -webkit-text-stroke:3.4px #ffffff;
+  }
+  .ipck-wordmark__swoosh{
+    height:38px!important;
+    bottom:-9px!important;
+    width:calc(100% + 26px)!important;
+  }
+}
+
 `;
