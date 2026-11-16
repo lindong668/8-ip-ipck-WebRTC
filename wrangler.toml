@@ -32,7 +32,10 @@ crons = ["7 6 1,2,3 * *"]
 [vars]
 SITE_NAME = "ipckit"
 DEFAULT_LANG = "en"
-APP_VERSION = "v43"
+APP_VERSION = "v47"
+# [v47 本轮变更] 字标换成「G 双色分字极简」：ipc 白 / kit 青绿 + 底部渐细青绿线；左侧地球沿用 v46 原样，不用 G 的准星图标。顶带对齐与其它模块零改动。
+# [v46 本轮变更] 品牌字标按参考图重做（粗白直立字 + 大青绿斜杠）；顶带左右边界收进内容列，品牌左/语言右与白卡对齐。
+# [v45 本轮变更] 品牌字标收口：缩回尺寸、斜杠不溢出、语言按钮留位，标语与导航不再被顶掉/盖掉。
 # [v43 本轮变更 ②] 根路径 / 不再 302 跳 /en/，直接 200 直出英文首页（Bing URL 检查不再判「重定向」）。
 # 对外收录态：取消 noindex / robots 全禁；sitemap.xml、robots.txt、ads.txt 由 Worker 直出。
 # 规范主机常量写死在 src/index.js 的 CANON_HOST，面板只需把 ipck.piccalc.com 绑到本 Worker。
