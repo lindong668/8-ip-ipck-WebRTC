@@ -9,6 +9,11 @@ import { RENDER_BROWSER_SRC } from './core/render.js';
 import { SOURCE_BROWSER_SRC } from './core/sourcebar.js';
 import { CLIENT_JS } from './client.js';
 
+// [v41 本轮变更 ①] Bing Webmaster Tools「HTML Meta 标记」所有权验证。
+//   msvalidate.01 的 content 是 Bing 账号级验证码，同一串可用于该账号下所有站点。
+//   默认写死本次复制下来的值；部署后若 Bing 后台换了码，不必改代码，
+//   在 CF 面板加变量 BING_VERIFY_META 即可覆盖（留空走默认值）。
+const BING_VERIFY_CONTENT = '922DCA6E549674B12068F412FE444631';
 
 // ---------------------------------------------------------------------------
 // h8 · 浏览器 helper shim（修 iOS Safari 真机 "Can't find variable: __name"）
@@ -196,6 +201,10 @@ export function renderPage(opts) {
   const gscMeta = opts.gscMeta
     ? '<meta name="google-site-verification" content="' + esc(opts.gscMeta) + '">'
     : '';
+  // [v41 本轮变更 ②] 14 个中英页面 head 全部输出 Bing 验证标记（含 /zh/ 与 /en/ 首页），
+  //   位于第一个 <body> 之前；Bing 抓取 https://ipck.piccalc.com/ 跟随 302 后也能命中。
+  //   纯所有权标记，不改 title / description / canonical / hreflang / 结构化数据。
+  const bingMeta = '<meta name="msvalidate.01" content="' + esc(opts.bingMeta || BING_VERIFY_CONTENT) + '" />';
   const ogLocale = lang.code === 'zh-CN' ? 'zh_CN' : 'en_US';
   const ogAlt = lang.code === 'zh-CN' ? 'en_US' : 'zh_CN';
   const isApp = structure.key === 'overview' || structure.key === 'ip';
@@ -304,6 +313,7 @@ export function renderPage(opts) {
     '<meta name="description" content="' + esc(subtitle) + '">',
     '<meta name="theme-color" content="#0b1020">',
     gscMeta,
+    bingMeta,
     '<meta property="og:type" content="website">',
     '<meta property="og:site_name" content="ipckit">',
     '<meta property="og:title" content="' + esc(title) + ' · ipckit">',

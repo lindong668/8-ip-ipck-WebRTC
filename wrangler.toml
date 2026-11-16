@@ -32,10 +32,12 @@ crons = ["7 6 1,2,3 * *"]
 [vars]
 SITE_NAME = "ipckit"
 DEFAULT_LANG = "en"
-APP_VERSION = "v40"
+APP_VERSION = "v41"
 # 对外收录态：取消 noindex / robots 全禁；sitemap.xml、robots.txt、ads.txt 由 Worker 直出。
 # 规范主机常量写死在 src/index.js 的 CANON_HOST，面板只需把 ipck.piccalc.com 绑到本 Worker。
 # 若 GSC 选「HTML 标记」验证，可加 GSC_VERIFY_META = "给你的content值"（留空即不输出该 meta）。
+# [v41 本轮变更 ④] Bing HTML Meta 验证：msvalidate.01 已内置默认码，14 个中英页 head 全输出。
+#   若 Bing 后台换了码，可加 BING_VERIFY_META = "新的content值" 覆盖，不必改代码、不必重新打包。
 # [v37 本轮变更 · 收录优化] 以下三项均可选，留空即默认行为，不配置也能正常部署：
 #   GSC_VERIFY_FILE    = "googleXXXX.html"  新域 GSC 用 HTML 文件验证时填新文件名
 #   GSC_VERIFY_CONTENT = "google-site-verification: googleXXXX.html"  自定义验证文件内容

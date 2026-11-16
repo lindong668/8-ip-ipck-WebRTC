@@ -298,6 +298,8 @@ export default {
       publicMode: publicMode,
       noindexPage: !isCanonHost || !publicMode,
       gscMeta: String((reqEnv && reqEnv.GSC_VERIFY_META) || ''),
+      // [v41 本轮变更 ③] 可选覆盖：CF 面板 BING_VERIFY_META 留空即用 ui.js 里写死的默认码。
+      bingMeta: String((reqEnv && reqEnv.BING_VERIFY_META) || ''),
       contact: SITE.contact,
       version: SITE.version,
       policyVersion: SITE.policyVersion,
