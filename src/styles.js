@@ -850,4 +850,93 @@ body{background:var(--bg)!important;color:var(--text)!important}
   }
   .ipck-side .ipck-lang-switch{top:12px!important;right:14px!important}
 }
+
+
+/* ==========================================================================
+   [v46 本轮变更] ① 品牌字标按参考图重做（粗白直立字 + 地球粗框 + 青绿大斜杠）
+                  ② 顶带左右边界收进内容列：品牌左 / 语言右 与下方白卡对齐一条线
+   根因（1440 实测量）：v45 收口层用 padding:14px 130px 14px 20px 覆盖了 v38
+   的居中公式，顶带变成全宽贴边 —— 品牌 x=20、语言按钮 x=1420，而白卡在
+   198~1242。于是「名字图标全往左移、右边语言栏被撑开」，跟下面卡片不对齐。
+   本层恢复居中公式，并把语言按钮右边界对齐到卡片右边界；字标装饰全部关进
+   .ipck-wordmark 内（inset:0），不再溢出压标语/导航。
+   ========================================================================== */
+
+/* --- A. 字标：直立 900 粗白字，去掉 italic / skew / 白描边 --- */
+.ipck-side > .ipck-brand{gap:10px!important}
+.ipck-logo-svg{width:40px!important;height:40px!important}
+.ipck-wordmark{
+  position:relative!important;
+  flex:0 0 auto!important;
+  overflow:visible!important;
+  padding:6px 0 8px!important;
+}
+.ipck-wordmark__text{
+  position:relative!important;z-index:2!important;
+  display:block!important;
+  font-family:'Arial Rounded MT Bold','Trebuchet MS','DejaVu Sans',system-ui,sans-serif!important;
+  font-style:normal!important;
+  font-weight:900!important;
+  font-size:36px!important;
+  line-height:1!important;
+  letter-spacing:-.06em!important;
+  color:#fff!important;
+  transform:none!important;
+  -webkit-text-stroke:0!important;
+  padding-right:26px!important;
+  white-space:nowrap;
+  -webkit-text-stroke:1.4px #ffffff;
+  paint-order:stroke fill;
+  text-shadow:0 3px 0 rgba(4,58,66,.40),0 5px 12px rgba(0,0,0,.22)!important;
+}
+.ipck-wordmark__swoosh{
+  position:absolute!important;
+  inset:0!important;
+  left:0!important;right:0!important;top:0!important;bottom:0!important;
+  width:100%!important;height:100%!important;
+  z-index:1!important;
+  pointer-events:none!important;
+  overflow:visible!important;
+}
+@media(max-width:860px){
+  .ipck-logo-svg{width:32px!important;height:32px!important}
+  .ipck-side > .ipck-brand{gap:9px!important}
+  .ipck-wordmark{padding:4px 0 6px!important}
+  .ipck-wordmark__text{font-size:27px!important;padding-right:20px!important}
+}
+
+/* --- B. 顶带对齐：PC 内边距 = 居中列留白 + 28；语言右边界 = 卡片右边界 --- */
+@media(min-width:861px){
+  .ipck-side{
+    padding-left:calc((100% - min(100%, var(--ipck-outer))) / 2 + var(--ipck-gut))!important;
+    padding-right:calc((100% - min(100%, var(--ipck-outer))) / 2 + var(--ipck-gut))!important;
+    column-gap:12px!important;row-gap:6px!important;
+    flex-wrap:nowrap!important;align-items:center!important;
+  }
+  .ipck-side > .ipck-lang-switch{
+    position:static!important;top:auto!important;right:auto!important;
+    margin-left:auto!important;flex:0 0 auto!important;z-index:3!important;
+  }
+  .ipck-side > .ipck-brand{flex:0 0 auto!important;z-index:2!important}
+  .ipck-side > .ipck-tag{
+    flex:1 1 auto!important;min-width:0!important;
+    font-size:14.5px!important;line-height:1.35!important;
+  }
+  .ipck-nav{flex:0 0 auto!important;margin:0!important;z-index:2!important;gap:4px!important}
+  .ipck-nav a,.ipck-nav span{white-space:nowrap!important}
+}
+@media(max-width:860px){
+  .ipck-side{
+    padding-left:14px!important;padding-right:100px!important;
+    column-gap:0!important;row-gap:6px!important;flex-wrap:wrap!important;align-items:center!important;
+  }
+  .ipck-side > .ipck-lang-switch{
+    position:absolute!important;top:12px!important;right:14px!important;
+    margin-left:0!important;z-index:20!important;
+  }
+  .ipck-side > .ipck-brand{flex:0 0 100%!important}
+  .ipck-side > .ipck-tag{flex:0 0 100%!important;font-size:12.5px!important}
+  .ipck-nav{flex:0 0 100%!important;margin-right:-86px!important;overflow:visible!important}
+}
+
 `;
