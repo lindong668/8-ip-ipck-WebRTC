@@ -3,7 +3,7 @@
 export const SITE = {
   name: 'ipckit',
   defaultLang: 'en',
-  version: 'v39',
+  version: 'v40',
   contact: "yokok8@outlook.com",
   policyVersion: "2026-11-14.2",
 };
@@ -70,7 +70,7 @@ export function matchPath(pathname) {
 const ZH = {
   "diag.scriptError": "页面脚本异常：{err}",
   "shell.brand": "ipckit",
-  "shell.tagline": "自身网络状态自查",
+  "shell.tagline": "IP 查询 · 个人网络状态与安全排查",
   "shell.nav.dashboard": "总览",
   "shell.nav.network": "IP 归属",
   "shell.nav.rtc": "WebRTC 泄露",
@@ -301,7 +301,7 @@ const ZH = {
 const EN = {
   "diag.scriptError": "Page script error: {err}",
   "shell.brand": "ipckit",
-  "shell.tagline": "Network Self-Check",
+  "shell.tagline": "IP Lookup · Personal Network Status & Security Check",
   "shell.nav.dashboard": "Dashboard",
   "shell.nav.network": "Network Info",
   "shell.nav.rtc": "WebRTC Leaks",

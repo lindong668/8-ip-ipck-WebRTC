@@ -632,4 +632,43 @@ body{background:var(--bg)!important;color:var(--text)!important}
 .ipck-diag-bad.ipck-diag-bad,.ipck-diag .ipck-diag-bad,.ipck-verdict.leak h3,.ipck-tag.bad,.ipck-error-box b{color:#a62d2d!important}
 .ipck-top p{color:rgba(255,255,255,.96)!important;font-size:13px!important;font-weight:600!important}
 
+/* ==========================================================================
+   [v40 本轮变更] 侧栏标语升级为站点定位标题 + 手机端恢复显示
+   根因：v32 在 @media(max-width:860px) 里写了
+     .ipck-side > .ipck-tag{display:none!important}
+   v36/v39 只改了它的颜色字号，从没覆盖 display，所以手机端一直看不到这句。
+   - PC：15.5px 加粗纯白，与站名同处顶带第一行；顶带允许换行，窄 PC 窗口不溢出
+   - 手机：标语独占一行、自动换行、12.5px；语言按钮仍与站名同一行右侧，
+     导航落到第三行，互不遮挡；容器右内边距 108px 继续给语言按钮留位
+   - 选择器只命中 .ipck-side > .ipck-tag。结果区 .ipck-tag.ok / .ipck-tag.bad
+     是另一套状态徽标（在 .ipck-content 内），完全不受影响。
+   ========================================================================== */
+.ipck-side{flex-wrap:wrap!important}
+.ipck-side > .ipck-tag{
+  display:block!important;
+  color:#fff!important;
+  font-size:15.5px!important;
+  font-weight:650!important;
+  letter-spacing:.01em!important;
+  line-height:1.4!important;
+  white-space:normal!important;
+  overflow-wrap:anywhere;
+  margin:0 0 0 4px!important;
+}
+@media(max-width:860px){
+  .ipck-side{row-gap:6px!important}
+  .ipck-side > .ipck-tag{
+    flex:0 0 100%!important;
+    font-size:12.5px!important;
+    line-height:1.4!important;
+    margin:0!important;
+    padding-right:2px;
+  }
+  /* [v40 收口] 英文 3 个导航项实际需 317px，而手机侧栏内容区只有 268px
+     （右侧 108px 让给右上角语言按钮），第三项文字被 overflow-x:auto 裁掉、
+     要横滑才看得见。用负 margin 把导航行扩到整屏可用宽度：
+     不缩字号、不减 padding、不动语言按钮位置，也不需要横滑。 */
+  .ipck-nav{margin-right:-94px!important;overflow:visible!important}
+}
+
 `;

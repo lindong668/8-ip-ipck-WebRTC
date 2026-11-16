@@ -162,8 +162,12 @@ export default {
     }
 
     // 0b) www / 明文 http 收敛到唯一规范主机
+    // [v40 本轮变更 · 收录修复] 301 响应绝不携带 X-Robots-Tag: noindex。
+    //   旧版这里传 reqEnv（www 属非规范 host，带 __IPCK_NOINDEX_HOST__ 标记），
+    //   于是 301 响应被 secHeaders 加上 noindex，与「重定向目标应被索引」相冲突。
+    //   改传 env：只影响这条 301 响应本身，页面渲染与预览态 noindex 逻辑不变。
     if (host === 'www.' + CANON_HOST || url.protocol === 'http:') {
-      return redirect(CANON_ORIGIN + pathname + url.search, 301, reqEnv);
+      return redirect(CANON_ORIGIN + pathname + url.search, 301, env);
     }
 
     // 0c) [v37 本轮变更] 其余非规范主机（workers.dev 预览 / 旧域 / 误绑域）→ 301 到规范 URL。
@@ -173,10 +177,11 @@ export default {
     }
 
     // 1) 历史 .html 地址：永久 301 收敛到无扩展名（对齐 7号 v18 口径，绝不留 307）
+    //    [v40] Location 统一为绝对规范 URL，避免相对跳转在协议/主机层产生歧义。
     if (pathname.endsWith('.html')) {
       const stripped = pathname.slice(0, -5);
       const m = matchPath(stripped);
-      if (m) return redirect(pathFor(m.lang.slug, m.structure.slug), 301, reqEnv);
+      if (m) return redirect(CANON_ORIGIN + pathFor(m.lang.slug, m.structure.slug), 301, reqEnv);
     }
 
     // 2) 根路径按 Accept-Language 分流到各自独立 URL（不用 ?lang=、不靠 cookie）
@@ -282,7 +287,8 @@ export default {
       );
     }
     const canonical = pathFor(m.lang.slug, m.structure.slug);
-    if (pathname !== canonical) return redirect(canonical, 301, reqEnv);
+    // [v40] 与 www/http/.html 三处 301 统一为绝对规范 URL；仍然只有 1 跳。
+    if (pathname !== canonical) return redirect(CANON_ORIGIN + canonical, 301, reqEnv);
 
     const rendered = renderPage({
       lang: m.lang,
