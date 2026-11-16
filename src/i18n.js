@@ -3,7 +3,7 @@
 export const SITE = {
   name: 'ipckit',
   defaultLang: 'en',
-  version: 'v41',
+  version: 'v42',
   contact: "yokok8@outlook.com",
   policyVersion: "2026-11-14.2",
 };

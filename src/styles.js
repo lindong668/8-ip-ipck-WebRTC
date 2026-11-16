@@ -671,4 +671,38 @@ body{background:var(--bg)!important;color:var(--text)!important}
   .ipck-nav{margin-right:-94px!important;overflow:visible!important}
 }
 
+
+/* ==========================================================================
+   [v42 本轮变更 ②] 品牌字标：斜体 ipckit + 斜划 + 亮绿对勾。
+   - 追加式覆盖，原有 CSS 一行未删；选择器只命中新增的 .ipck-wordmark*。
+   - 字体用系统 sans + italic + 轻微 skew，不下载任何 webfont。
+   - PC / 手机两套尺寸，右上角 English 与下面标语、导航都不占位冲突。
+   ========================================================================== */
+.ipck-wordmark{position:relative;display:inline-flex;align-items:center;vertical-align:middle}
+.ipck-wordmark__text{
+  display:block;
+  color:#fff!important;
+  font-style:italic!important;
+  font-weight:800!important;
+  font-size:33px!important;
+  line-height:1!important;
+  letter-spacing:-.045em!important;
+  transform:skewX(-8deg);
+  transform-origin:left center;
+  padding-right:30px;
+  white-space:nowrap;
+  text-shadow:0 1px 2px rgba(0,0,0,.14);
+}
+.ipck-wordmark__swoosh{
+  position:absolute;left:-4px;bottom:-9px;
+  width:calc(100% + 6px);height:38px;
+  pointer-events:none;overflow:visible;
+}
+.ipck-side > .ipck-brand{gap:12px!important}
+@media(max-width:860px){
+  .ipck-wordmark__text{font-size:27px!important;padding-right:24px}
+  .ipck-wordmark__swoosh{height:32px;bottom:-7px}
+  .ipck-side > .ipck-brand{gap:9px!important}
+}
+
 `;
