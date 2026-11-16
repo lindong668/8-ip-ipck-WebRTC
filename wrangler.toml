@@ -1,0 +1,43 @@
+# 8号 IP 自查站 · ipckit · v38（规范主机 ipck.piccalc.com）
+# 历史沿革注释保留，仅供查阅。
+# h22：修好建库脚本的真断点（临时 ndjson 单文件无限 append → EFBIG）。
+#   库改为 8 列含地区，push 即由 workflow 自动重建并 commit，部署路径仍是纯上传。
+#   DB-IP Lite 源本身带 stateprov，地区不是「库差」，是之前那份 6 列残库没生成过。
+# h18：IP 归属统一只读 assets/geo 离线库，CF 边缘元数据不参与判断。部署链不变。
+# h17 收口：离线库已经随包自带（assets/geo/ → 447 个分片 + meta.json，
+#   DB-IP Lite 2026-11，IPv4 732,778 行 / IPv6 733,044 行）。
+# 部署路径上没有任何自定义脚本：没有 postinstall、没有 [build].command、
+#   没有运行时装库、没有 KV 写入、没有下载/解压/排序。wrangler deploy 只做纯上传。
+# h13~h16 的 0 行 / 25 MiB 超限 / 2GB OOM / KV 权限，全部发生在「部署时造库」，
+#   这条链已整条删除，不可能再复现。
+# 运行时只读一个静态分片：零外网、零第三方、零日志。
+# 月度更新改由 .github/workflows/dbip-monthly.yml 在 GitHub 机器上生成并 commit，
+#   push 触发一次纯上传部署；更新失败只保留上一版库，绝不阻断网站。
+name = "8-ip-dns-ipck"
+main = "src/index.js"
+compatibility_date = "2026-11-13"
+account_id = "d49e51b1279804c22035a33a9c1cb06e"
+
+# 静态库随部署上传；run_worker_first=true 保证请求先走 Worker，assets 只经绑定读取。
+[assets]
+directory = "./assets"
+binding = "ASSETS"
+run_worker_first = true
+
+
+# cron 仅作轻量心跳：纯读状态，0 下载 / 0 解压 / 0 解析 / 0 写入。
+[triggers]
+crons = ["7 6 1,2,3 * *"]
+
+[vars]
+SITE_NAME = "ipckit"
+DEFAULT_LANG = "en"
+APP_VERSION = "v38"
+# 对外收录态：取消 noindex / robots 全禁；sitemap.xml、robots.txt、ads.txt 由 Worker 直出。
+# 规范主机常量写死在 src/index.js 的 CANON_HOST，面板只需把 ipck.piccalc.com 绑到本 Worker。
+# 若 GSC 选「HTML 标记」验证，可加 GSC_VERIFY_META = "给你的content值"（留空即不输出该 meta）。
+# [v37 本轮变更 · 收录优化] 以下三项均可选，留空即默认行为，不配置也能正常部署：
+#   GSC_VERIFY_FILE    = "googleXXXX.html"  新域 GSC 用 HTML 文件验证时填新文件名
+#   GSC_VERIFY_CONTENT = "google-site-verification: googleXXXX.html"  自定义验证文件内容
+#   CANON_REDIRECT     = "false"  仅调试预览域名时临时关闭非规范主机 301 收敛
+PUBLIC_MODE = "true"

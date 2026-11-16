@@ -1,0 +1,9 @@
+{
+  "name": "8-ip-dns-ipck",
+  "version": "0.9.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "deploy": "wrangler deploy"
+  }
+}
