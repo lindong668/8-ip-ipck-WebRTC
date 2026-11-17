@@ -40,7 +40,12 @@ export const CLIENT_JS = `
   // [v33] 编排层收口：以下逻辑只服务 IP 归属 / WebRTC / 任意 IP 查询。
 
   var features = page.features || { ip: true, webrtc: false };
-  var running = false;
+  // [v50-r2] 检测与「输入 IP 查询」各自独立：慢检测（全局代理下 WebRTC 等满 8s）
+  //   不再吞掉查询，也不在结束后用本机结果覆盖查询结果。
+  //   paintSeq 保证只有「最后一次用户操作」的结果落地。
+  var runBusy = false;
+  var lookupBusy = false;
+  var paintSeq = 0;
   var btn = document.getElementById('ipck-run');
   var bar = document.getElementById('ipck-progress');
   var diag = document.getElementById('ipck-diag');
@@ -211,6 +216,7 @@ export const CLIENT_JS = `
   }
 
   function clearResults() {
+    paintSeq++;   // [v50-r2] 清除也是一次用户操作，正在跑的慢检测不得再覆盖清空态
     ['ip', 'rtc'].forEach(function (k) {
       var el = document.getElementById('ipck-' + k);
       if (el) el.innerHTML = '<div class="ipck-empty">' + esc(T('ov.empty', '尚未检测')) + '</div>';
@@ -236,12 +242,14 @@ export const CLIENT_JS = `
     return !window[c[0]] || typeof window[c[0]][c[1]] !== 'function';
   }).map(function (c) { return c[0] + '.' + c[1]; });
 
-  function setRunning(on) {
+  function setRunUI(on) {
     if (bar) bar.hidden = !on;
     if (btn) {
       btn.disabled = on;
       btn.textContent = on ? (T('shell.running', 'Running') || 'Running') : (T('shell.run', 'Run') || 'Run');
     }
+  }
+  function setLookupUI(on) {
     if (lookupBtn) {
       lookupBtn.disabled = on;
       lookupBtn.textContent = on ? (T('lookup.running', 'Looking up…') || 'Looking up…') : (T('lookup.run', 'Look up') || 'Look up');
@@ -284,6 +292,14 @@ export const CLIENT_JS = `
           setDiag(R.renderDiagHtml(data, L));
         }
       } catch (e) { errs.push('render ' + errText(e)); }
+      // [v50-r2] 富渲染会盖掉段 1 的「查询对象」标注，补回去：
+      //   本机检测必须一眼可辨，不能再和「输入的 IP」混成同一张卡。
+      try {
+        var ipEl2 = document.getElementById('ipck-ip');
+        if (ipEl2 && data.ip && !ipEl2.querySelector('.ipck-subject')) {
+          ipEl2.insertAdjacentHTML('afterbegin', subjectLine(data.ip, false));
+        }
+      } catch (e) { errs.push('subject ' + errText(e)); }
     }
 
     // 段 3：底部来源条 + 常驻署名
@@ -363,10 +379,11 @@ export const CLIENT_JS = `
   }
 
   async function run() {
-    if (running) return;
-    running = true;
-    setRunning(true);
-    setDiag('<span>' + esc(T('shell.checking', '正在检测…')) + '</span>');
+    if (runBusy) return;
+    runBusy = true;
+    var mySeq = ++paintSeq;
+    setRunUI(true);
+    if (mySeq === paintSeq) setDiag('<span>' + esc(T('shell.checking', '正在检测…')) + '</span>');
     var data = { ip: null, rtc: null, started: true, jsBroken: false, diag: {} };
     var runError = null;   // [v31] WebRTC 主流程异常，paint 之后在页面输出
 
@@ -413,11 +430,12 @@ export const CLIENT_JS = `
       data.diag = { apiDown: true, apiTimeout: false, edgeOk: false, edgeMissing: false };
     } finally {
       data.baseline = loadBaseline();   // 先取「上次」，再渲染，才会形成前后对照
-      paint(data);
+      // [v50-r2] 期间用户又点了「查询该 IP」，慢检测结束后不再覆盖查询结果。
+      if (mySeq === paintSeq) paint(data);
       saveBaseline(data);               // 本次观测留给下一次复测
-      if (runError) reportScriptError(runError);   // [v31] 不静默失败
-      running = false;
-      setRunning(false);
+      if (runError && mySeq === paintSeq) reportScriptError(runError);   // [v31] 不静默失败
+      runBusy = false;
+      setRunUI(false);
     }
   }
 
@@ -438,37 +456,44 @@ export const CLIENT_JS = `
     return true;
   }
   async function runLookup() {
-    if (running) return;
     if (!input) return;
+    // [v50-r2] 不再共用检测的锁：即使本机检测还在等 WebRTC，查询也立刻执行。
+    if (lookupBusy) {
+      setDiag('<span>' + esc(T('lookup.busy', '上一次查询还在进行，请稍候再点一次。')) + '</span>');
+      return;
+    }
     var raw = String(input.value || '').trim();
     if (!plausibleIp(raw)) {
       badDiag(T('lookup.invalid', 'Not a valid IPv4 or IPv6 address. No request was made.'), '');
       return;
     }
-    running = true;
-    setRunning(true);
-    setDiag('<span>' + esc(T('lookup.running', 'Looking up…')) + '</span>');
+    lookupBusy = true;
+    var mySeq = ++paintSeq;
+    var say = function (html) { if (mySeq === paintSeq) setDiag(html); };
+    var sayBad = function (txt) { if (mySeq === paintSeq) badDiag(txt); };
+    setLookupUI(true);
+    say('<span>' + esc(T('lookup.running', 'Looking up…')) + '</span>');
     try {
       var j = await fetchJson('/api/lookup?ip=' + encodeURIComponent(raw));
       var data = {
         ip: j, rtc: null, started: true, jsBroken: false,
         diag: { apiDown: false, apiTimeout: false, edgeOk: true, edgeMissing: false, version: page.version }
       };
-      paint(data);
+      if (mySeq === paintSeq) paint(data);
       if (j.status === 'ok') {
-        setDiag('<span class="ipck-diag-ok">' + esc(T('lookup.diagOk', '✓ 查询完成')) + '</span>');
+        say('<span class="ipck-diag-ok">' + esc(T('lookup.diagOk', '✓ 查询完成')) + '</span>');
       } else if (j.status === 'lib-not-loaded') {
-        setDiag('<span class="ipck-diag-warn">' + esc(T('lookup.diagLib', '⚠ 离线库未加载，输入查询不可用')) + '</span>');
+        say('<span class="ipck-diag-warn">' + esc(T('lookup.diagLib', '⚠ 离线库未加载，输入查询不可用')) + '</span>');
       } else if (j.status === 'no-row') {
-        setDiag('<span>' + esc(T('lookup.noRowTitle', '该地址无公开归属数据')) + '</span>');
+        say('<span>' + esc(T('lookup.noRowTitle', '该地址无公开归属数据')) + '</span>');
       } else {
-        badDiag(T('lookup.invalid', 'Not a valid IPv4 or IPv6 address. No request was made.'), '');
+        sayBad(T('lookup.invalid', 'Not a valid IPv4 or IPv6 address. No request was made.'));
       }
     } catch (e) {
-      badDiag(T('diag.apiDown', '服务暂时不可用，请稍后重试'));
+      sayBad(T('diag.apiDown', '服务暂时不可用，请稍后重试'));
     } finally {
-      running = false;
-      setRunning(false);
+      lookupBusy = false;
+      setLookupUI(false);
     }
   }
 
