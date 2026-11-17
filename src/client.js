@@ -378,7 +378,19 @@ export const CLIENT_JS = `
     });
   }
 
+  // [v50-r3] 兑现页面文案：输入框里有地址时，点「开始检测」也只查这个地址，
+  //   不再跑 8 秒 WebRTC 本机检测、不再把本机出口 IP 当成结果渲染。
+  //   输入框留空才走本机检测；输入不合法给明确提示，不偷偷回退到查本机。
+  //   查询期间本机检测若还在跑，paintSeq 保证慢检测结束后不会覆盖本次查询结果。
   async function run() {
+    var raw = input ? String(input.value || '').trim() : '';
+    if (raw !== '') {
+      if (!plausibleIp(raw)) {
+        badDiag(T('lookup.invalid', 'Not a valid IPv4 or IPv6 address. No request was made.'));
+        return;
+      }
+      return runLookup();
+    }
     if (runBusy) return;
     runBusy = true;
     var mySeq = ++paintSeq;
@@ -479,9 +491,16 @@ export const CLIENT_JS = `
         ip: j, rtc: null, started: true, jsBroken: false,
         diag: { apiDown: false, apiTimeout: false, edgeOk: true, edgeMissing: false, version: page.version }
       };
-      if (mySeq === paintSeq) paint(data);
+      if (mySeq === paintSeq) {
+        paint(data);
+        // [v50-r3] 输入查询不跑 WebRTC，把本机检测面板复位，避免残留上一次的候选结果。
+        var rtcEl = document.getElementById('ipck-rtc');
+        if (rtcEl) rtcEl.innerHTML = '<div class="ipck-empty">' +
+          esc(T('lookup.rtcSkipped', '本次仅查询输入地址，未做本机检测')) + '</div>';
+      }
       if (j.status === 'ok') {
-        say('<span class="ipck-diag-ok">' + esc(T('lookup.diagOk', '✓ 查询完成')) + '</span>');
+        say('<span class="ipck-diag-ok">' + esc(T('lookup.diagOk', '✓ 查询完成')) +
+          ' · ' + esc(raw) + '</span>');
       } else if (j.status === 'lib-not-loaded') {
         say('<span class="ipck-diag-warn">' + esc(T('lookup.diagLib', '⚠ 离线库未加载，输入查询不可用')) + '</span>');
       } else if (j.status === 'no-row') {

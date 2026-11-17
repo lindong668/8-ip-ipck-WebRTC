@@ -3,7 +3,7 @@
 export const SITE = {
   name: 'ipckit',
   defaultLang: 'en',
-  version: 'v50-r2',
+  version: 'v50-r3',
   contact: "yokok8@outlook.com",
   policyVersion: "2026-11-14.2",
 };
@@ -233,7 +233,8 @@ const ZH = {
   "lookup.placeholder": "输入 IPv4 或 IPv6，例如 8.8.8.8 或 240e:37b::1",
   "lookup.run": "查询该 IP",
   "lookup.clear": "清空",
-  "lookup.hint": "留空并点「开始检测」查本机；填入地址则查该地址。查询只在本页完成，不会把输入发送给其它网站，也不记录你查过什么。",
+  "lookup.hint": "填入地址后，点「开始检测」或「查询该 IP」都只查这个地址；留空点「开始检测」才查本机连接。查询只在本页完成，不会把输入发送给其它网站，也不记录你查过什么。",
+  "lookup.rtcSkipped": "本次仅查询输入地址，未做本机检测",
   "lookup.invalid": "这不是有效的 IPv4 / IPv6 地址，未发起任何请求。",
   "lookup.subjectManual": "查询对象：你输入的 IP（本页查询结果）",
   "lookup.subjectSelf": "查询对象：本次连接的 IP（本页查询结果）",
@@ -471,7 +472,8 @@ const EN = {
   "lookup.placeholder": "Enter an IPv4 or IPv6 address, e.g. 8.8.8.8 or 240e:37b::1",
   "lookup.run": "Look up",
   "lookup.clear": "Clear",
-  "lookup.hint": "Leave this empty and click Run diagnostics to check your own connection; enter an address to look up that address instead. The lookup runs in this page, sends your input to no other website, and keeps no record of what you looked up.",
+  "lookup.hint": "With an address entered, both Run diagnostics and Look up will look up that address only. Leave this empty and click Run diagnostics to check your own connection. The lookup runs in this page, sends your input to no other website, and keeps no record of what you looked up.",
+  "lookup.rtcSkipped": "Address lookup only; your connection was not checked this time",
   "lookup.invalid": "Not a valid IPv4 or IPv6 address. No request was made.",
   "lookup.subjectManual": "Subject: the IP you entered (result from this page)",
   "lookup.subjectSelf": "Subject: the IP of this connection (result from this page)",
