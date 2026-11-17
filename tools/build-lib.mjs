@@ -32,6 +32,7 @@ import path from 'node:path';
 import zlib from 'node:zlib';
 import readline from 'node:readline';
 import crypto from 'node:crypto';
+import { Readable } from 'node:stream';
 
 const OUT = path.resolve('assets/geo');
 const TMP = path.resolve('.ipckit-tmp');
@@ -153,7 +154,10 @@ async function openStream(file, fromDir) {
   }
   const r = await fetch(BASE + file, { headers: { 'User-Agent': 'ipckit-build' }, redirect: 'follow' });
   if (!r.ok || !r.body) { missingSources++; log('download failed', file, r.status); return null; }
-  let s = r.body;
+  // fetch() 的 r.body 是 WHATWG ReadableStream，没有 .pipe() / .on()，
+  // 直接喂给 zlib 或 readline 会在下载成功后立刻抛错（CI 首次运行即 0s 红叉）。
+  // 统一转成 Node Readable；--from-dir 本地分支本来就是 fs stream，不受影响。
+  let s = Readable.fromWeb(r.body);
   if (file.endsWith('.gz')) s = s.pipe(zlib.createGunzip());
   log('downloaded', file, r.headers.get('content-length') || '?');
   return s;
