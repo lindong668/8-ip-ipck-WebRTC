@@ -199,6 +199,8 @@ export function renderPage(opts) {
   const keyPrefix = structure.key === 'overview' ? 'ov' : structure.key;
   const title = t(lang.code, keyPrefix + '.title');
   const subtitle = t(lang.code, keyPrefix + '.subtitle');
+  // [v50-r10] Bing SEO/GEO 报「标题太短」：<title>/og/twitter 追加站点 tagline；h1、字典、结构数据一律不动
+  const seoTitle = title + ' · ' + t(lang.code, 'shell.tagline');
   const canonical = origin + pathFor(lang.slug, structure.slug);
   const xdefault = origin + pathFor(LANGS[XDEFAULT].slug, structure.slug);
   const isLegal = LEGAL_KEYS.indexOf(structure.key) >= 0;
@@ -312,7 +314,7 @@ export function renderPage(opts) {
     '<head>',
     '<meta charset="utf-8">',
     '<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">',
-    '<title>' + esc(title) + ' · ipckit</title>',
+    '<title>' + esc(seoTitle) + ' · ipckit</title>',
     robotsMeta,
     '<link rel="icon" href="' + FAVICON_HREF + '">',
     '<meta name="description" content="' + esc(subtitle) + '">',
@@ -321,13 +323,13 @@ export function renderPage(opts) {
     bingMeta,
     '<meta property="og:type" content="website">',
     '<meta property="og:site_name" content="ipckit">',
-    '<meta property="og:title" content="' + esc(title) + ' · ipckit">',
+    '<meta property="og:title" content="' + esc(seoTitle) + ' · ipckit">',
     '<meta property="og:description" content="' + esc(subtitle) + '">',
     '<meta property="og:url" content="' + esc(canonical) + '">',
     '<meta property="og:locale" content="' + ogLocale + '">',
     '<meta property="og:locale:alternate" content="' + ogAlt + '">',
     '<meta name="twitter:card" content="summary">',
-    '<meta name="twitter:title" content="' + esc(title) + ' · ipckit">',
+    '<meta name="twitter:title" content="' + esc(seoTitle) + ' · ipckit">',
     '<meta name="twitter:description" content="' + esc(subtitle) + '">',
     '<link rel="canonical" href="' + esc(canonical) + '">',
     altLinks,
