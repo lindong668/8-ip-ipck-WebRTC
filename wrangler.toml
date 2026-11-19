@@ -1,4 +1,8 @@
 # 8号 IP 自查站 · ipckit · v39（规范主机 ipck.piccalc.com）
+# [v50-r11 本轮变更] 结果「国家」格加国旗 SVG 图片（flag-icons 7.5.0 / MIT，247 码内嵌，
+#   零外网、零系统 emoji 字体依赖）；新增 src/core/flags.js，改 render.js / client.js / ui.js /
+#   styles.js 与本注释。离线库分片、路由、canonical / hreflang / sitemap / SEO、判定逻辑、[vars]
+#   全部逐字节未动；APP_VERSION 沿用历史口径不变。
 # 历史沿革注释保留，仅供查阅。
 # h22：修好建库脚本的真断点（临时 ndjson 单文件无限 append → EFBIG）。
 #   库改为 8 列含地区，push 即由 workflow 自动重建并 commit，部署路径仍是纯上传。

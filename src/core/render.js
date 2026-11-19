@@ -1,8 +1,24 @@
+import { FLAG_SVG } from './flags.js';
 // L1 · 结果渲染器。h8：中文页在展示层加译名，原始值放括号内，绝不写回数据。
 export function escHtml(v) {
   return String(v == null ? '' : v)
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+// [v50-r11] 国旗用内嵌 SVG 图片，不依赖系统 emoji 字体（Windows 上 emoji 会退化成两字母）。
+// 本函数同时被 renderResultBlocks.toString() 注入浏览器，故只读 globalThis，不引用模块作用域。
+function flagImgHtml(code) {
+  var s = String(code == null ? '' : code).trim().toUpperCase();
+  if (!/^[A-Z]{2}$/.test(s) || s === 'ZZ') return '';
+  // Worker 端用模块旗表；浏览器端（函数体被 .toString() 注入）用 window.IPCK_FLAGS。
+  // typeof 对未声明标识符安全，浏览器里 FLAG_SVG 不存在也不会抛错。
+  var F = (typeof FLAG_SVG !== 'undefined' && FLAG_SVG) ||
+          (typeof globalThis !== 'undefined' && globalThis.IPCK_FLAGS) || null;
+  var svg = F && F[s.toLowerCase()];
+  if (!svg) return '<span class="flagimg flagfb">' + s + '</span> ';
+  return '<img class="flagimg" alt="' + s + '" title="' + s +
+    '" src="data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg) + '"> ';
 }
 
 // ---- v28 · 大众认知口径：host 公网 + srflx 公网都参与判定 ----
@@ -177,7 +193,7 @@ export function renderResultBlocks(data, labels, mode) {
     var f = d.ip.fields || {};
     // h21 · 库实际有值才渲染；本库无 city / timezone 列，故不摆这两格。
     var rows = [
-      ['ov.country', loc('country', f.country)], ['ov.region', loc('region', f.region)],
+      ['ov.country', loc('country', f.country), f.country], ['ov.region', loc('region', f.region)],
       ['ov.asn', f.asn], ['ov.isp', loc('isp', f.isp)],
     ];
     var big = m === 'ip'
@@ -187,7 +203,9 @@ export function renderResultBlocks(data, labels, mode) {
     for (var i = 0; i < rows.length; i++) {
       var val = rows[i][1];
       if (val == null || val === '') continue;
-      grid += '<div class="ipck-field"><span>' + escHtml(L(rows[i][0])) + '</span><b>' + escHtml(val) + '</b></div>';
+      var valHtml = escHtml(val);
+      if (rows[i][0] === 'ov.country') valHtml = flagImgHtml(rows[i][2]) + valHtml;
+      grid += '<div class="ipck-field"><span>' + escHtml(L(rows[i][0])) + '</span><b>' + valHtml + '</b></div>';
     }
     grid += '</div>';
     // [v32 本轮变更] 结果区只留用户真正需要的数据 + 许可回链。
@@ -332,6 +350,7 @@ export function renderDiagHtml(data, labels) {
 
 export const RENDER_BROWSER_SRC = [
   escHtml.toString(),
+  flagImgHtml.toString(),
   ipVersionOf.toString(),
   normIp.toString(),
   isPrivateHost.toString(),
@@ -340,5 +359,5 @@ export const RENDER_BROWSER_SRC = [
   verdictCardHtml.toString(),
   renderResultBlocks.toString(),
   renderDiagHtml.toString(),
-  'window.IPCK_RENDER = { escHtml, renderResultBlocks, renderDiagHtml };',
+  'window.IPCK_RENDER = { escHtml, flagImgHtml, renderResultBlocks, renderDiagHtml };',
 ].join('\n');

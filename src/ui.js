@@ -8,6 +8,9 @@ import { RTC_BROWSER_SRC } from './core/rtc.js';
 import { RENDER_BROWSER_SRC } from './core/render.js';
 import { SOURCE_BROWSER_SRC } from './core/sourcebar.js';
 import { CLIENT_JS } from './client.js';
+import { FLAG_SVG } from './core/flags.js';
+// [v50-r11] 旗表序列化一次；把 < > & 转成 unicode 转义，防止 </script> 截断与 HTML 注入。
+const FLAGS_JSON = JSON.stringify(FLAG_SVG).replace(/</g, '\\u003c').replace(/>/g, '\\u003e').replace(/&/g, '\\u0026');
 
 // [v41 本轮变更 ①] Bing Webmaster Tools「HTML Meta 标记」所有权验证。
 //   msvalidate.01 的 content 是 Bing 账号级验证码，同一串可用于该账号下所有站点。
@@ -302,6 +305,7 @@ export function renderPage(opts) {
     '<script' + N + '>' + BROWSER_SHIM + '\n' + 'window.IPCK_I18N = ' + dictJson + ';</script>',
     '<script' + N + '>' + BROWSER_SHIM + '\n' + 'window.IPCK_PAGE = ' + pageJson + ';</script>',
     '<script' + N + '>' + BROWSER_SHIM + '\n' + 'window.IPCK_GEO_ZH = ' + JSON.stringify(GEO_ZH) + ';</script>',
+    '<script' + N + '>window.IPCK_FLAGS=' + FLAGS_JSON + ';</script>',
     '<script' + N + '>' + BROWSER_SHIM + '\n' + RTC_BROWSER_SRC + '</script>',
     '<script' + N + '>' + BROWSER_SHIM + '\n' + RENDER_BROWSER_SRC + '</script>',
     '<script' + N + '>' + BROWSER_SHIM + '\n' + SOURCE_BROWSER_SRC + '</script>',
@@ -364,7 +368,8 @@ export function renderPage(opts) {
     '      <div class="ipck-foot-contact"><span class="ipck-foot-contact-label">' +
         esc(lang.code === 'zh-CN' ? '联系' : 'Contact') + '</span>' +
       '<a href="mailto:' + esc(opts.contact) + '">' + esc(opts.contact) + '</a>' +
-      '<span class="ipck-build">' + esc(opts.version || '') + '</span></div></footer>',
+      '<span class="ipck-build">' + esc(opts.version || '') + '</span>' +
+      '<span class="ipck-flag-credit"> · flag-icons (MIT)</span></div></footer>',
     '  </div>',
     '</div>',
     browserScripts,

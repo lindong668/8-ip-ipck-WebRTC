@@ -11,6 +11,17 @@ export const CLIENT_JS = `
 (function () {
   var L = window.IPCK_I18N || {};
   var page = window.IPCK_PAGE || {};
+  // [v50-r11] 国旗：本站内嵌 SVG 图片，Windows / macOS / iOS / Android 一致。
+  // 原生兜底渲染不依赖 IPCK_RENDER，所以这里自带一份实现。
+  function flagImg(code) {
+    var s = String(code == null ? '' : code).trim().toUpperCase();
+    if (!/^[A-Z]{2}$/.test(s) || s === 'ZZ') return '';
+    var F = window.IPCK_FLAGS || null;
+    var svg = F && F[s.toLowerCase()];
+    if (!svg) return '<span class="flagimg flagfb">' + s + '</span> ';
+    return '<img class="flagimg" alt="' + s + '" title="' + s +
+      '" src="data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg) + '"> ';
+  }
   var LEGAL = ['about', 'privacy', 'terms', 'rights'];
 
   // [v31 本轮变更 ⑨] JS 异常一律在页面输出，禁止静默失败 / 页面空白
@@ -103,7 +114,7 @@ export const CLIENT_JS = `
     var G = geoCtx();
     // h21 · 库有什么就显示什么：候选四项，值为空整块不渲染，绝不摆空框、绝不写占位。
     var rows = [
-      ['ov.country', '国家', loc(G, 'country', f.country)],
+      ['ov.country', '国家', loc(G, 'country', f.country), f.country],
       ['ov.region', '地区', loc(G, 'region', f.region)],
       ['ov.asn', 'ASN', f.asn],
       ['ov.isp', '运营商', loc(G, 'isp', f.isp)]
@@ -114,7 +125,9 @@ export const CLIENT_JS = `
     for (var i = 0; i < rows.length; i++) {
       var v = rows[i][2];
       if (v == null || v === '') continue;
-      out += '<div class="ipck-field"><span>' + esc(T(rows[i][0], rows[i][1])) + '</span><b>' + esc(v) + '</b></div>';
+      var valHtml = esc(v);
+      if (rows[i][0] === 'ov.country') valHtml = flagImg(rows[i][3]) + valHtml;
+      out += '<div class="ipck-field"><span>' + esc(T(rows[i][0], rows[i][1])) + '</span><b>' + valHtml + '</b></div>';
     }
     out += '</div>';
     // [v32 本轮变更] 库版本 / 数据源 / 译名注明不外显，页脚署名已常驻
@@ -162,7 +175,7 @@ export const CLIENT_JS = `
     var G = geoCtx();
     // h21 · 同上：只渲染该次命中里真实有值的字段。
     var rows = [
-      ['ov.country', '国家', loc(G, 'country', f.country)],
+      ['ov.country', '国家', loc(G, 'country', f.country), f.country],
       ['ov.region', '地区', loc(G, 'region', f.region)],
       ['ov.asn', 'ASN', f.asn],
       ['ov.isp', '运营商', loc(G, 'isp', f.isp)]
@@ -172,7 +185,9 @@ export const CLIENT_JS = `
     for (var i = 0; i < rows.length; i++) {
       var v = rows[i][2];
       if (v == null || v === '') continue;
-      out += '<div class="ipck-field"><span>' + esc(T(rows[i][0], rows[i][1])) + '</span><b>' + esc(v) + '</b></div>';
+      var valHtml = esc(v);
+      if (rows[i][0] === 'ov.country') valHtml = flagImg(rows[i][3]) + valHtml;
+      out += '<div class="ipck-field"><span>' + esc(T(rows[i][0], rows[i][1])) + '</span><b>' + valHtml + '</b></div>';
     }
     out += '</div>';
     // [v32 本轮变更] 只保留必要提示，库版本与译名注明不外显

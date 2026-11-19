@@ -991,4 +991,11 @@ body{background:var(--bg)!important;color:var(--text)!important}
   .ipck-wordmark__swoosh{height:8px!important}
 }
 
+/* [v50-r11] 国旗 SVG 图片：内嵌 <img>，不经过系统 emoji 字体 */
+.ipck-field b .flagimg{display:inline-block;width:1.18em;height:.88em;vertical-align:-.14em;
+  margin-right:.35em;border-radius:2px;object-fit:cover;background:#0d1117;flex:none}
+.ipck-field b .flagfb{font-size:.58em;line-height:1.18em;color:var(--muted);font-weight:700;
+  text-align:center;letter-spacing:-.02em}
+.ipck-flag-credit{display:inline;margin-left:6px;color:var(--muted);font-size:11px}
+
 `;
