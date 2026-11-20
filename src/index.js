@@ -24,7 +24,7 @@ const NOINDEX = 'noindex, nofollow, noarchive';
 // 站点功能收敛为两项：IP 归属查询 + 浏览器地址暴露自查（rtc.js 真 ICE 候选采集）。
 // 采集只在同意 + 点击后执行；解析路径相关页面、入口、字典、接口全部移除，
 // 以后要加回按 git 历史恢复即可，当前不留任何半成品页。
-const SITEMAP_LASTMOD = '2026-11-16';
+const SITEMAP_LASTMOD = '2026-11-20';
 
 const ADS_TXT = [
   '# ipckit · ' + CANON_HOST,
@@ -36,8 +36,22 @@ const ROBOTS_TXT = [
   'User-agent: *',
   'Allow: /',
   'Disallow: /api/',
+  'Disallow: /version.txt',
   '',
   'Sitemap: ' + CANON_ORIGIN + '/sitemap.xml',
+  '',
+].join('\n');
+
+// [v50-r12] 部署自检口：纯文本、200、不进 sitemap、robots 已 Disallow。
+// 用于回答「线上到底跑的是不是这一版」——旧版此地址 404。
+const BUILD_ID = 'IPCK-V50-R12-U9-20261120';
+const VERSION_TXT = [
+  'BUILD_ID=' + BUILD_ID,
+  'SITE=ipckit / ipck.piccalc.com',
+  'SITEMAP_URLS=14',
+  'STATIC_CONTENT_PAGES=14',
+  'NO_SLASH_VARIANT=200_CANONICAL_TO_SLASH',
+  'LOOP_REDIRECT=none',
   '',
 ].join('\n');
 
@@ -152,6 +166,7 @@ export default {
     if (pathname === '/sitemap.txt') return seoText(buildSitemapTxt(), 'text/plain; charset=utf-8');
     if (pathname === '/robots.txt') return seoText(ROBOTS_TXT, 'text/plain; charset=utf-8');
     if (pathname === '/ads.txt') return seoText(ADS_TXT, 'text/plain; charset=utf-8');
+    if (pathname === '/version.txt') return seoText(VERSION_TXT, 'text/plain; charset=utf-8');
     // 0a) [v37] GSC 所有权验证文件：优先读 env.GSC_VERIFY_FILE（新域重新验证时填新文件名），
     //     未配置时保留历史 token 兼容；内容可用 GSC_VERIFY_CONTENT 覆盖。
     //     排在所有 .html 301 / 404 之前，直出 200，不可 noindex、不可 301。
@@ -290,8 +305,16 @@ export default {
       );
     }
     const canonical = pathFor(m.lang.slug, m.structure.slug);
-    // [v40] 与 www/http/.html 三处 301 统一为绝对规范 URL；仍然只有 1 跳。
-    if (pathname !== canonical) return redirect(CANON_ORIGIN + canonical, 301, reqEnv);
+    // [v50-r12 本轮变更 ① · 收录修复] 不带尾斜杠的规范变体改为 200 直出，不再 301。
+    //   GSC「重定向错误」里那 6 条（/en、/en/webrtc-leak、/zh/ip-lookup …）正是同一批
+    //   页面被去掉尾斜杠后的形态；301 把「可索引的页面」变成「一条跳转记录」。
+    //   现在 200 直出，但 canonical / hreflang / sitemap / 站内链接全部仍指向带斜杠规范页，
+    //   由 canonical 归并，不产生第二套可索引 URL，也不重演 Bing「重定向页面」旧快照那事。
+    //   只放行「规范路径恰好少一个尾斜杠」这一种差异；其余怪异路径仍 404。
+    const noSlashVariant = canonical.length > 1 && pathname === canonical.replace(/\/+$/, '');
+    if (pathname !== canonical && !noSlashVariant) {
+      return redirect(CANON_ORIGIN + canonical, 301, reqEnv);
+    }
 
     const rendered = renderPage({
       lang: m.lang,

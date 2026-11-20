@@ -998,4 +998,42 @@ body{background:var(--bg)!important;color:var(--text)!important}
   text-align:center;letter-spacing:-.02em}
 .ipck-flag-credit{display:inline;margin-left:6px;color:var(--muted);font-size:11px}
 
+/* [v50-r12] 服务端直出静态正文：与结果面板同一套深色卡片，手机表格内部横向滚动 */
+.ipck-sc{background:var(--panel)!important;border:1px solid var(--line)!important;
+  border-radius:14px!important;padding:22px 24px 26px;min-width:0;color:var(--text)}
+.ipck-sc-lead{font-size:15px;line-height:1.85;color:#eaf3ff;margin:0 0 6px}
+.ipck-sc-h2{font-size:18px!important;line-height:1.45;margin:24px 0 10px;padding-left:11px;
+  border-left:3px solid var(--green);color:#eaf3ff;font-weight:650;letter-spacing:normal;text-transform:none}
+.ipck-sc-p{margin:0 0 12px;line-height:1.85;color:#cdd9ec;font-size:14px}
+.ipck-sc-ul{margin:0 0 14px;padding-left:22px}
+.ipck-sc-ul li{margin:0 0 8px;line-height:1.85;color:#cdd9ec;font-size:14px}
+.ipck-sc-tablewrap{overflow-x:auto;margin:0 0 16px;-webkit-overflow-scrolling:touch}
+.ipck-sc-table{border-collapse:collapse;width:100%;min-width:520px;font-size:13px}
+.ipck-sc-table th,.ipck-sc-table td{border:1px solid var(--line);padding:9px 11px;
+  text-align:left;vertical-align:top;line-height:1.7}
+.ipck-sc-table th{background:#17233e;color:#eaf3ff;font-weight:600;white-space:nowrap}
+.ipck-sc-table td{color:#cdd9ec}
+.ipck-sc-faq{display:grid;gap:10px}
+.ipck-sc-qa{border:1px solid var(--line);border-radius:10px;padding:12px 14px;background:rgba(15,23,48,.6)}
+.ipck-sc-qa h3{font-size:14px;margin:0 0 6px;color:#eaf3ff;font-weight:600;line-height:1.6}
+.ipck-sc-qa p{margin:0;font-size:13px;line-height:1.85;color:#c2d0e6}
+.ipck-sc-related{margin-top:26px;border-top:1px solid var(--line);padding-top:12px}
+.ipck-sc-related .ipck-sc-h2{margin-top:6px}
+.ipck-sc-links{display:flex;flex-wrap:wrap;gap:8px}
+.ipck-sc-links a{display:inline-block;padding:6px 12px;border:1px solid var(--line);border-radius:999px;
+  color:var(--accent);text-decoration:none;font-size:12.5px;background:rgba(122,162,255,.07)}
+.ipck-sc-links a:hover{border-color:var(--accent);background:rgba(122,162,255,.16)}
+.ipck-sc a[href^="mailto:"]{color:var(--accent)}
+.ipck-top .ipck-sc-lead-top{color:rgba(255,255,255,.94)!important;font-size:14px!important;
+  line-height:1.75!important;margin:10px 0 4px!important;max-width:820px;letter-spacing:.01em}
+.ipck-sc-jump{display:inline-block;color:#bff3dc!important;font-size:12.5px;
+  text-decoration:underline;text-underline-offset:3px;margin-top:2px}
+#ipck-static-content{scroll-margin-top:16px}
+@media(max-width:860px){
+  .ipck-sc{padding:16px 15px 20px}
+  .ipck-sc-lead{font-size:14px}
+  .ipck-top .ipck-sc-lead-top{font-size:13px!important;line-height:1.7!important}
+  .ipck-sc-h2{font-size:16px!important;margin-top:20px}
+  .ipck-sc-p,.ipck-sc-ul li,.ipck-sc-qa p{line-height:1.8}
+}
 `;

@@ -9,6 +9,8 @@ import { RENDER_BROWSER_SRC } from './core/render.js';
 import { SOURCE_BROWSER_SRC } from './core/sourcebar.js';
 import { CLIENT_JS } from './client.js';
 import { FLAG_SVG } from './core/flags.js';
+// [v50-r12 本轮变更 ②] 14 个规范页的服务端直出静态正文（中英各自原创，不依赖 JS 执行）。
+import { staticContentHtml, staticLeadHtml, metaDesc, faqList } from './content.js';
 // [v50-r11] 旗表序列化一次；把 < > & 转成 unicode 转义，防止 </script> 截断与 HTML 注入。
 const FLAGS_JSON = JSON.stringify(FLAG_SVG).replace(/</g, '\\u003c').replace(/>/g, '\\u003e').replace(/&/g, '\\u0026');
 
@@ -202,6 +204,8 @@ export function renderPage(opts) {
   const keyPrefix = structure.key === 'overview' ? 'ov' : structure.key;
   const title = t(lang.code, keyPrefix + '.title');
   const subtitle = t(lang.code, keyPrefix + '.subtitle');
+  // [v50-r12] 14 页各自一条独立、更长、含长尾词的 description；h1 / title / 字典一律不动。
+  const pageDesc = metaDesc(lang.code, structure.key) || subtitle;
   // [v50-r10] Bing SEO/GEO 报「标题太短」：<title>/og/twitter 追加站点 tagline；h1、字典、结构数据一律不动
   const seoTitle = title + ' · ' + t(lang.code, 'shell.tagline');
   const canonical = origin + pathFor(lang.slug, structure.slug);
@@ -226,7 +230,7 @@ export function renderPage(opts) {
     '@id': canonical + '#page',
     name: title + ' · ipckit',
     url: canonical,
-    description: subtitle,
+    description: pageDesc,
     inLanguage: lang.htmlLang,
     isPartOf: { '@id': origin + '/#website' },
     publisher: { '@id': origin + '/#org' },
@@ -248,6 +252,20 @@ export function renderPage(opts) {
         }) },
     ],
   };
+  // [v50-r12] 三个工具页追加 FAQPage；问与答逐字取自同页服务端直出的可见 FAQ 区，
+  // 不引入页面上看不到的内容。法务页不加，避免结构化数据噪音。
+  const faqItems = (structure.key === 'overview' || structure.key === 'ip' || structure.key === 'rtc')
+    ? faqList(lang.code, structure.key) : [];
+  if (faqItems.length) {
+    ldGraph['@graph'].push({
+      '@type': 'FAQPage',
+      '@id': canonical + '#faq',
+      mainEntity: faqItems.map(function (f) {
+        return { '@type': 'Question', name: f.q,
+          acceptedAnswer: { '@type': 'Answer', text: f.a } };
+      }),
+    });
+  }
   const ldJson = JSON.stringify(ldGraph).replace(/</g, '\\u003c');
 
   const emptyData = { ip: null, rtc: null, started: false };
@@ -321,20 +339,20 @@ export function renderPage(opts) {
     '<title>' + esc(seoTitle) + ' · ipckit</title>',
     robotsMeta,
     '<link rel="icon" href="' + FAVICON_HREF + '">',
-    '<meta name="description" content="' + esc(subtitle) + '">',
+    '<meta name="description" content="' + esc(pageDesc) + '">',
     '<meta name="theme-color" content="#0b1020">',
     gscMeta,
     bingMeta,
     '<meta property="og:type" content="website">',
     '<meta property="og:site_name" content="ipckit">',
     '<meta property="og:title" content="' + esc(seoTitle) + ' · ipckit">',
-    '<meta property="og:description" content="' + esc(subtitle) + '">',
+    '<meta property="og:description" content="' + esc(pageDesc) + '">',
     '<meta property="og:url" content="' + esc(canonical) + '">',
     '<meta property="og:locale" content="' + ogLocale + '">',
     '<meta property="og:locale:alternate" content="' + ogAlt + '">',
     '<meta name="twitter:card" content="summary">',
     '<meta name="twitter:title" content="' + esc(seoTitle) + ' · ipckit">',
-    '<meta name="twitter:description" content="' + esc(subtitle) + '">',
+    '<meta name="twitter:description" content="' + esc(pageDesc) + '">',
     '<link rel="canonical" href="' + esc(canonical) + '">',
     altLinks,
     '<style' + N + '>' + CSS + '</style>',
@@ -356,11 +374,13 @@ export function renderPage(opts) {
     '        <div class="ipck-head-text"><h1>' + esc(title) + '</h1><p>' + esc(subtitle) + '</p></div>',
     '      </div>',
     '      <div class="ipck-progress" id="ipck-progress" hidden><div class="ipck-progress-fill"></div></div>',
+    // [v50-r12] 首屏即有一段实质正文（不是提示条、不是链接农场），下方静态区不重复这段。
+    staticLeadHtml(lang.code, structure.key),
     '    </header>',
     isLegal ? '' : runbarHtml(lang),
     (isLegal || !showIp) ? '' : lookupHtml(lang, opts),
     isLegal ? '' : ('    <div class="ipck-diag" id="ipck-diag">' + esc(t(lang.code, 'diag.idle')) + '</div>'),
-    '    <main class="ipck-content">' + panels + '</main>',
+    '    <main class="ipck-content">' + panels + staticContentHtml(lang.code, structure.key, lang.slug) + '</main>',
     '    <footer class="ipck-sourcebar" id="ipck-sourcebar">' + sourcebar + '</footer>',
     // [v34 本轮变更] 法务入口常驻页面最下方，PC/手机统一，不再挤在顶部被语言按钮遮挡。
     // [v39 本轮变更 ③] 联系方式 + 站点版本号落在页面最下方，不再只留一个邮箱
